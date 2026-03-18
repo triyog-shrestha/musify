@@ -115,30 +115,3 @@ public class StatsService {
         }
     }
 }
-
-
-git init
-git remote add origin https://github.com/triyog-shrestha/musify.git
-
-        # 2. model package
-git add src/model/
-git commit -m "feat: add model classes - Song, Recommendation"
-
-        # 3. util package
-git add src/util/
-git commit -m "feat: add util classes - Store, Importer"
-
-        # 4. dao package
-git add src/dao/
-git commit -m "feat: add dao classes - SongDAO, RecommendationDAO"
-
-        # 5. service package
-git add src/service/
-git commit -m "feat: add service classes - SongService, StatsService, RecommendationService"
-
-        # 6. Main + data
-git add src/Main.java data/
-git commit -m "feat: add Main entry point and sample recommendations data"
-
-        # 7. Push everything
-git push -u origin main
