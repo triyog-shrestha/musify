@@ -1,0 +1,144 @@
+// StatsService.java
+// Calculates all stats from the song library.
+// Multi-genre songs: each genre gets the full play count added to it.
+
+package service;
+
+import dao.SongDAO;
+import model.Song;
+
+import java.util.*;
+
+public class StatsService {
+
+    private final SongDAO dao = new SongDAO();
+
+    // -------------------------------------------------------------------------
+    // Top Artists — sorted by total play count
+    // -------------------------------------------------------------------------
+    public List<Map.Entry<String, Integer>> getTopArtists() {
+        Map<String, Integer> counts = new HashMap<>();
+        for (Song song : dao.getAll()) {
+            // artists are pipe-separated
+            for (String artist : song.getArtists().split("\\|")) {
+                String a = artist.trim();
+                if (!a.isEmpty()) {
+                    counts.merge(a, song.getPlayCount(), Integer::sum);
+                }
+            }
+        }
+        return sortedDesc(counts);
+    }
+
+    // -------------------------------------------------------------------------
+    // Top Songs — sorted by play count
+    // -------------------------------------------------------------------------
+    public List<Song> getTopSongs() {
+        List<Song> songs = new ArrayList<>(dao.getAll());
+        songs.sort((a, b) -> b.getPlayCount() - a.getPlayCount());
+        return songs;
+    }
+
+    // -------------------------------------------------------------------------
+    // Top Genres — each genre gets the FULL play count of the song
+    // e.g. a song with genres "rap|r&b" and 5 plays adds 5 to rap AND 5 to r&b
+    // -------------------------------------------------------------------------
+    public List<Map.Entry<String, Integer>> getTopGenres() {
+        Map<String, Integer> counts = new HashMap<>();
+        for (Song song : dao.getAll()) {
+            // genres are pipe-separated
+            for (String genre : song.getGenres().split("\\|")) {
+                String g = genre.trim();
+                if (!g.isEmpty()) {
+                    counts.merge(g, song.getPlayCount(), Integer::sum);
+                }
+            }
+        }
+        return sortedDesc(counts);
+    }
+
+    // -------------------------------------------------------------------------
+    // Top Mood — mood with the most total plays
+    // -------------------------------------------------------------------------
+    public String getTopMood() {
+        Map<String, Integer> counts = new HashMap<>();
+        for (Song song : dao.getAll()) {
+            String mood = song.getMood().trim();
+            if (!mood.isEmpty()) {
+                counts.merge(mood, song.getPlayCount(), Integer::sum);
+            }
+        }
+        return counts.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("RELAXED");
+    }
+
+    // -------------------------------------------------------------------------
+    // Total minutes listened
+    // -------------------------------------------------------------------------
+    public long getTotalMinutes() {
+        long totalSeconds = 0;
+        for (Song song : dao.getAll()) {
+            totalSeconds += parseSeconds(song.getLength()) * song.getPlayCount();
+        }
+        return totalSeconds / 60;
+    }
+
+    // -------------------------------------------------------------------------
+    // Total plays
+    // -------------------------------------------------------------------------
+    public int getTotalPlays() {
+        int total = 0;
+        for (Song song : dao.getAll()) total += song.getPlayCount();
+        return total;
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    // Sort a map by value descending, return as list of entries
+    private List<Map.Entry<String, Integer>> sortedDesc(Map<String, Integer> map) {
+        List<Map.Entry<String, Integer>> list = new ArrayList<>(map.entrySet());
+        list.sort((a, b) -> b.getValue() - a.getValue());
+        return list;
+    }
+
+    // Parse "mm:ss" to total seconds
+    private long parseSeconds(String length) {
+        try {
+            String[] parts = length.split(":");
+            return Long.parseLong(parts[0]) * 60 + Long.parseLong(parts[1]);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+}
+
+
+git init
+git remote add origin https://github.com/triyog-shrestha/musify.git
+
+        # 2. model package
+git add src/model/
+git commit -m "feat: add model classes - Song, Recommendation"
+
+        # 3. util package
+git add src/util/
+git commit -m "feat: add util classes - Store, Importer"
+
+        # 4. dao package
+git add src/dao/
+git commit -m "feat: add dao classes - SongDAO, RecommendationDAO"
+
+        # 5. service package
+git add src/service/
+git commit -m "feat: add service classes - SongService, StatsService, RecommendationService"
+
+        # 6. Main + data
+git add src/Main.java data/
+git commit -m "feat: add Main entry point and sample recommendations data"
+
+        # 7. Push everything
+git push -u origin main
