@@ -77,12 +77,38 @@ public class Main {
 
         System.out.print("Enter Song ID:\n> ");
         int id = Store.parseInt(sc.nextLine());
+        if (id <= 0) {
+            System.out.println("Invalid ID.");
+            return;
+        }
 
-        System.out.print("Enter new play count:\n> ");
-        int count = Store.parseInt(sc.nextLine());
+        // find the song from results to get current play count
+        Song selected = null;
+        for (Song s : results) {
+            if (s.getSongId() == id) {
+                selected = s;
+                break;
+            }
+        }
 
-        songService.setPlayCount(id, count);
-        System.out.println("Updated.");
+        if (selected == null) {
+            System.out.println("That ID is not in the search results.");
+            return;
+        }
+
+        System.out.println("Current play count: " + selected.getPlayCount());
+        System.out.print("How many plays to add:\n> ");
+        int toAdd = Store.parseInt(sc.nextLine());
+
+        if (toAdd < 0) {
+            System.out.println("Cannot add a negative number.");
+            return;
+        }
+
+        int newCount = selected.getPlayCount() + toAdd;
+        songService.setPlayCount(id, newCount);
+        System.out.println("Updated. " + selected.getTrackName() + " — "
+                + selected.getPlayCount() + " + " + toAdd + " = " + newCount + " plays.");
     }
 
     // -------------------------------------------------------------------------
