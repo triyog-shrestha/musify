@@ -19,7 +19,7 @@ public class StatsService {
     public List<Map.Entry<String, Integer>> getTopArtists() {
         Map<String, Integer> counts = new HashMap<>();
         for (Song song : dao.getAll()) {
-            // artists are pipe-separated
+            if (song.getPlayCount() == 0) continue;
             for (String artist : song.getArtists().split("\\|")) {
                 String a = artist.trim();
                 if (!a.isEmpty()) {
@@ -46,9 +46,16 @@ public class StatsService {
     public List<Map.Entry<String, Integer>> getTopGenres() {
         Map<String, Integer> counts = new HashMap<>();
         for (Song song : dao.getAll()) {
-            // genres are pipe-separated
-            for (String genre : song.getGenres().split("\\|")) {
-                String g = genre.trim();
+
+            // skip songs with no plays — they shouldn't affect genre rankings
+            if (song.getPlayCount() == 0) continue;
+
+            String genres = song.getGenres().trim();
+            if (genres.isEmpty()) continue;
+
+            // split by pipe and count each genre separately
+            for (String genre : genres.split("\\|")) {
+                String g = genre.trim().toLowerCase(); // normalize case
                 if (!g.isEmpty()) {
                     counts.merge(g, song.getPlayCount(), Integer::sum);
                 }
@@ -63,6 +70,7 @@ public class StatsService {
     public String getTopMood() {
         Map<String, Integer> counts = new HashMap<>();
         for (Song song : dao.getAll()) {
+            if (song.getPlayCount() == 0) continue;
             String mood = song.getMood().trim();
             if (!mood.isEmpty()) {
                 counts.merge(mood, song.getPlayCount(), Integer::sum);
@@ -75,23 +83,21 @@ public class StatsService {
     }
 
     // -------------------------------------------------------------------------
-    // Total minutes listened
-    // -------------------------------------------------------------------------
-    public long getTotalMinutes() {
-        long totalSeconds = 0;
-        for (Song song : dao.getAll()) {
-            totalSeconds += parseSeconds(song.getLength()) * song.getPlayCount();
-        }
-        return totalSeconds / 60;
-    }
-
-    // -------------------------------------------------------------------------
-    // Total plays
+    // Total minutes listened and total plays
     // -------------------------------------------------------------------------
     public int getTotalPlays() {
         int total = 0;
         for (Song song : dao.getAll()) total += song.getPlayCount();
         return total;
+    }
+
+    public long getTotalMinutes() {
+        long totalSeconds = 0;
+        for (Song song : dao.getAll()) {
+            if (song.getPlayCount() == 0) continue;
+            totalSeconds += parseSeconds(song.getLength()) * song.getPlayCount();
+        }
+        return totalSeconds / 60;
     }
 
     // -------------------------------------------------------------------------
