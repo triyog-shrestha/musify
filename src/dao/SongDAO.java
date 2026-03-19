@@ -49,9 +49,12 @@ public class SongDAO {
         List<String> updated = new ArrayList<>();
         for (String[] row : all) {
             if (Store.parseInt(row[0]) == songId) {
-                row[8] = String.valueOf(newCount); // column 8 = playCount
+                Song s = fromRow(row);
+                s.setPlayCount(newCount);
+                updated.add(toRow(s));
+            } else {
+                updated.add(toRow(fromRow(row)));
             }
-            updated.add(String.join(",", row));
         }
         Store.overwrite(Store.SONGS_FILE, updated);
     }
@@ -62,7 +65,7 @@ public class SongDAO {
         List<String> kept = new ArrayList<>();
         for (String[] row : all) {
             if (Store.parseInt(row[0]) != songId) {
-                kept.add(String.join(",", row));
+                kept.add(toRow(fromRow(row)));
             }
         }
         Store.overwrite(Store.SONGS_FILE, kept);
