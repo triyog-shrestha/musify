@@ -121,4 +121,17 @@ public class Store {
         try { return Integer.parseInt(val.trim()); }
         catch (NumberFormatException e) { return 0; }
     }
+
+    // add this method to Store.java
+    public static void createFileIfMissing(String path, String header) {
+        File f = new File(path);
+        if (!f.exists()) {
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
+                bw.write(header);
+                bw.newLine();
+            } catch (IOException e) {
+                System.out.println("Could not create file: " + path);
+            }
+        }
+    }
 }
