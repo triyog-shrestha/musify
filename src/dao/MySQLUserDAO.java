@@ -1,6 +1,6 @@
-// UserDAO.java
-// Database operations for User table using JDBC with MySQL
-// Replaced CSV-based operations with SQL queries
+// MySQLUserDAO.java
+// Database operations for User table using JDBC
+// Replaces CSV-based operations from the original UserDAO
 
 package dao;
 
@@ -12,16 +12,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UserDAO extends BaseDAO {
-
-    /**
-     * Initialize database (placeholder for compatibility)
-     * Database schema is created via SQL scripts before app startup
-     */
-    public void init() {
-        // Database initialization handled by SQL scripts
-        // Connection test happens at application startup
-    }
+public class MySQLUserDAO extends BaseDAO {
 
     /**
      * Create a new user in the database

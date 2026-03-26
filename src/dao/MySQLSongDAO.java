@@ -1,6 +1,6 @@
-// SongDAO.java
-// Database operations for Song table using JDBC with MySQL
-// Replaced CSV-based operations with SQL queries
+// MySQLSongDAO.java
+// Database operations for Song table using JDBC
+// Supports songs with artists and genres in many-to-many relationships
 
 package dao;
 
@@ -10,7 +10,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SongDAO extends BaseDAO {
+public class MySQLSongDAO extends BaseDAO {
 
     /**
      * Insert a new song into the database
@@ -126,14 +126,61 @@ public class SongDAO extends BaseDAO {
     }
 
     /**
-     * Update play count for a song
-     * @param songId Song ID
-     * @param newCount New play count
+     * Get songs by artist ID
+     * @param artistId Artist ID to search for
+     * @return List of songs by the artist
      */
-    public void updatePlayCount(int songId, int newCount) throws SQLException {
-        // For backward compatibility with old interface
-        // This updates a generic play count (not user-specific)
-        // In the new system, use the Library table via LibraryDAO
+    public List<Song> getSongsByArtist(int artistId) throws SQLException {
+        List<Song> songs = new ArrayList<>();
+        String sql = "SELECT s.songId, s.trackName, s.length, s.mood, s.spotifyUrl, s.albumId " +
+                     "FROM Song s JOIN Song_Artist sa ON s.songId = sa.songId " +
+                     "WHERE sa.artistId = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, artistId);
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                songs.add(fromResultSet(rs));
+            }
+        } finally {
+            DatabaseConnection.closeResultSet(rs);
+            DatabaseConnection.closePreparedStatement(stmt);
+            DatabaseConnection.closeConnection(conn);
+        }
+        return songs;
+    }
+
+    /**
+     * Get songs by genre ID
+     * @param genreId Genre ID to search for
+     * @return List of songs in the genre
+     */
+    public List<Song> getSongsByGenre(int genreId) throws SQLException {
+        List<Song> songs = new ArrayList<>();
+        String sql = "SELECT s.songId, s.trackName, s.length, s.mood, s.spotifyUrl, s.albumId " +
+                     "FROM Song s JOIN Song_Genre sg ON s.songId = sg.songId " +
+                     "WHERE sg.genreId = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, genreId);
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                songs.add(fromResultSet(rs));
+            }
+        } finally {
+            DatabaseConnection.closeResultSet(rs);
+            DatabaseConnection.closePreparedStatement(stmt);
+            DatabaseConnection.closeConnection(conn);
+        }
+        return songs;
     }
 
     /**
@@ -195,6 +242,46 @@ public class SongDAO extends BaseDAO {
     }
 
     /**
+     * Update play count for a song
+     * @param songId Song ID
+     * @param userId User ID
+     * @param playCount New play count
+     */
+    public void updatePlayCount(int songId, int userId, int playCount) throws SQLException {
+        String sql = "INSERT INTO Library (userId, songId, playCount) VALUES (?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE playCount = ?";
+        executeUpdate(sql, userId, songId, playCount, playCount);
+    }
+
+    /**
+     * Get play count for a song by a user
+     * @param songId Song ID
+     * @param userId User ID
+     * @return Play count
+     */
+    public int getPlayCount(int songId, int userId) throws SQLException {
+        String sql = "SELECT playCount FROM Library WHERE songId = ? AND userId = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, songId);
+            stmt.setInt(2, userId);
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("playCount");
+            }
+            return 0;
+        } finally {
+            DatabaseConnection.closeResultSet(rs);
+            DatabaseConnection.closePreparedStatement(stmt);
+            DatabaseConnection.closeConnection(conn);
+        }
+    }
+
+    /**
      * Helper method to convert ResultSet row to Song object
      * @param rs ResultSet positioned at the row to convert
      * @return Song object
@@ -206,9 +293,17 @@ public class SongDAO extends BaseDAO {
         String mood = rs.getString("mood");
         String spotifyUrl = rs.getString("spotifyUrl");
 
-        String artists = getArtistsForSong(songId);
-        String genres = getGenresForSong(songId);
-
-        return new Song(songId, trackName, "", artists, length, genres, mood, spotifyUrl, 0);
+        Song song = new Song(trackName, "", "", length, "", mood, spotifyUrl);
+        song.setSongId(songId);
+        
+        // Get artists and genres
+        try {
+            song = new Song(songId, trackName, "", getArtistsForSong(songId),
+                           length, getGenresForSong(songId), mood, spotifyUrl, 0);
+        } catch (SQLException e) {
+            // Fall back to basic song if relationships can't be loaded
+        }
+        
+        return song;
     }
 }

@@ -5,8 +5,7 @@
 import javafx.application.Application;
 import javafx.stage.Stage;
 import ui.LoginScreen;
-import util.Store;
-import dao.UserDAO;
+import db.DatabaseConnection;
 
 public class Main extends Application {
 
@@ -17,9 +16,12 @@ public class Main extends Application {
     public void start(Stage stage) {
         primaryStage = stage;
 
-        // initialise CSV files on first run
-        Store.init();
-        new UserDAO().init();
+        // Test database connection at startup
+        if (!DatabaseConnection.testConnection()) {
+            System.err.println("Failed to connect to database. Make sure MySQL is running and configured.");
+            System.err.println("Check src/config/db.properties for database settings.");
+            System.exit(1);
+        }
 
         // window settings
         stage.setTitle("Musify");
