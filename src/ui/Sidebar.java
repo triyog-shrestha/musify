@@ -1,6 +1,6 @@
 // Sidebar.java
 // Reusable left navigation bar used by all main screens.
-// Takes the active screen name and the current user to show the username.
+// Routes admins to admin-specific screens and listeners to listener screens.
 
 package ui;
 
@@ -53,23 +53,16 @@ public class Sidebar extends VBox {
 
         getChildren().addAll(logo, username, role, div);
 
-        // nav items
-        String[] items = { "Home", "Library", "Stats", "Recommendations", "Profile" };
+        // Different nav items for admin vs listener
+        boolean isAdmin = user instanceof Admin;
+        String[] items = isAdmin 
+            ? new String[]{ "Home", "Recommendations", "Stats", "Profile" }
+            : new String[]{ "Home", "Library", "Stats", "Recommendations", "Profile" };
+            
         for (String item : items) {
             Button btn = navButton(item, item.equals(active));
             btn.setOnAction(e -> navigate(item, user));
             getChildren().add(btn);
-        }
-
-        if (user instanceof Admin) {
-            Region div2 = new Region();
-            div2.setStyle("-fx-background-color: " + Theme.BORDER + ";");
-            div2.setMinHeight(1);
-            div2.setMaxHeight(1);
-            VBox.setMargin(div2, new Insets(8, 8, 8, 8));
-            Button adminBtn = navButton("Admin Panel", "Admin Panel".equals(active));
-            adminBtn.setOnAction(e -> navigate("Admin Panel", user));
-            getChildren().addAll(div2, adminBtn);
         }
 
         // spacer
@@ -83,7 +76,7 @@ public class Sidebar extends VBox {
         logout.setMaxWidth(Double.MAX_VALUE);
         Theme.hoverGhost(logout);
         logout.setOnAction(e -> {
-            Main.primaryStage.setScene(new LoginScreen().getScene());
+            AppContext.primaryStage.setScene(new RoleSelectionScreen().getScene());
         });
         getChildren().add(logout);
     }
@@ -100,13 +93,41 @@ public class Sidebar extends VBox {
     }
 
     private void navigate(String item, User user) {
+        boolean isAdmin = user instanceof Admin;
+        
         switch (item) {
-            case "Home"            -> Main.primaryStage.setScene(new HomeScreen(user).getScene());
-            case "Library"         -> Main.primaryStage.setScene(new LibraryScreen(user).getScene());
-            case "Stats"           -> Main.primaryStage.setScene(new StatsScreen(user).getScene());
-            case "Recommendations" -> Main.primaryStage.setScene(new RecsScreen(user).getScene());
-            case "Profile"         -> Main.primaryStage.setScene(new ProfileScreen(user).getScene());
-            case "Admin Panel"     -> Main.primaryStage.setScene(new AdminScreen(user).getScene());
+            case "Home" -> {
+                if (isAdmin) {
+                    AppContext.primaryStage.setScene(new AdminHomeScreen(user).getScene());
+                } else {
+                    AppContext.primaryStage.setScene(new HomeScreen(user).getScene());
+                }
+            }
+            case "Library" -> {
+                // Only for listeners
+                AppContext.primaryStage.setScene(new LibraryScreen(user).getScene());
+            }
+            case "Stats" -> {
+                if (isAdmin) {
+                    AppContext.primaryStage.setScene(new AdminStatsScreen(user).getScene());
+                } else {
+                    AppContext.primaryStage.setScene(new StatsScreen(user).getScene());
+                }
+            }
+            case "Recommendations" -> {
+                if (isAdmin) {
+                    AppContext.primaryStage.setScene(new AdminRecsScreen(user).getScene());
+                } else {
+                    AppContext.primaryStage.setScene(new RecsScreen(user).getScene());
+                }
+            }
+            case "Profile" -> {
+                if (isAdmin) {
+                    AppContext.primaryStage.setScene(new AdminProfileScreen(user).getScene());
+                } else {
+                    AppContext.primaryStage.setScene(new ProfileScreen(user).getScene());
+                }
+            }
         }
     }
 }
