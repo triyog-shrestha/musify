@@ -1,6 +1,6 @@
 // HomeScreen.java
 // Landing screen after login.
-// Lets the user import a CSV file and update play counts by searching songs.
+// Lets the user update play counts by searching songs.
 
 package ui;
 
@@ -9,19 +9,22 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.beans.property.SimpleStringProperty;
 import model.Song;
 import model.User;
 import service.SongService;
-import util.Store;
 
 import java.util.List;
 
 public class HomeScreen {
 
     private final User        user;
-    private final SongService songService = new SongService();
+    private final SongService songService;
 
-    public HomeScreen(User user) { this.user = user; }
+    public HomeScreen(User user) { 
+        this.user = user; 
+        this.songService = new SongService(user.getUserId());
+    }
 
     public Scene getScene() {
         BorderPane root = new BorderPane();
@@ -35,65 +38,10 @@ public class HomeScreen {
         // page title
         Label title = new Label("Home");
         title.setStyle(Theme.LABEL_TITLE);
-        Label sub = new Label("Import your Spotify playlist or update play counts");
+        Label sub = new Label("Search and update play counts for your songs");
         sub.setStyle(Theme.LABEL_SUBTITLE);
 
-        // import card
-        VBox importCard = new VBox(16);
-        importCard.setStyle(Theme.CARD);
-        importCard.setPadding(new Insets(24));
-
-        Label importTitle = new Label("Import Playlist");
-        importTitle.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 16px; -fx-font-weight: bold;");
-        Label importSub = new Label("Paste the full path to your Exportify CSV file below");
-        importSub.setStyle(Theme.LABEL_SUBTITLE);
-
-        HBox importRow = new HBox(12);
-        importRow.setAlignment(Pos.CENTER_LEFT);
-        TextField pathField = new TextField();
-        pathField.setPromptText("C:\\Users\\...\\playlist.csv");
-        pathField.setStyle(Theme.FIELD);
-        pathField.setPrefWidth(500);
-        Theme.focusField(pathField);
-
-        Button importBtn = new Button("Import");
-        importBtn.setStyle(Theme.BTN_PRIMARY);
-        importBtn.setMinHeight(40);
-        Theme.hoverPrimary(importBtn);
-
-        Label importResult = new Label("");
-        importResult.setStyle(Theme.LABEL_SUCCESS);
-
-        importBtn.setOnAction(e -> {
-            String path = pathField.getText().trim().replace("\"", "");
-            if (path.isEmpty()) {
-                importResult.setStyle(Theme.LABEL_ERROR);
-                importResult.setText("Please enter a file path.");
-                return;
-            }
-            int count = songService.importSongs(path);
-            if (count > 0) {
-                importResult.setStyle(Theme.LABEL_SUCCESS);
-                importResult.setText("Successfully imported " + count + " songs.");
-            } else {
-                importResult.setStyle(Theme.LABEL_ERROR);
-                importResult.setText("No songs imported. Check the file path and format.");
-            }
-        });
-
-        importRow.getChildren().addAll(pathField, importBtn);
-        importCard.getChildren().addAll(importTitle, importSub, importRow, importResult);
-
-        // update play count card
-        VBox playCard = new VBox(16);
-        playCard.setStyle(Theme.CARD);
-        playCard.setPadding(new Insets(24));
-
-        Label playTitle = new Label("Update Play Count");
-        playTitle.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 16px; -fx-font-weight: bold;");
-        Label playSub = new Label("Search a song and add to its play count");
-        playSub.setStyle(Theme.LABEL_SUBTITLE);
-
+        // search bar
         HBox searchRow = new HBox(12);
         searchRow.setAlignment(Pos.CENTER_LEFT);
         TextField searchField = new TextField();
@@ -105,24 +53,25 @@ public class HomeScreen {
         searchBtn.setStyle(Theme.BTN_GHOST);
         searchBtn.setMinHeight(40);
         Theme.hoverGhost(searchBtn);
-        searchRow.getChildren().addAll(searchField, searchBtn);
+        Button showAllBtn = new Button("Show All");
+        showAllBtn.setStyle(Theme.BTN_GHOST);
+        showAllBtn.setMinHeight(40);
+        Theme.hoverGhost(showAllBtn);
+        searchRow.getChildren().addAll(searchField, searchBtn, showAllBtn);
 
-        // results table
+        // results table (smaller to fit without scrolling)
         TableView<Song> table = buildSongTable();
-        table.setMaxHeight(200);
-        table.setVisible(false);
+        table.setMaxHeight(280);
+        HomeScreen.styleTable(table);
+
+        Label statusLabel = new Label("");
+        statusLabel.setStyle(Theme.LABEL_SUBTITLE);
 
         HBox updateRow = new HBox(12);
         updateRow.setAlignment(Pos.CENTER_LEFT);
-        updateRow.setVisible(false);
 
-        Label idLabel = new Label("Song ID:");
-        idLabel.setStyle(Theme.LABEL_SUBTITLE);
-        TextField idField = new TextField();
-        idField.setPromptText("ID");
-        idField.setStyle(Theme.FIELD);
-        idField.setPrefWidth(80);
-        Theme.focusField(idField);
+        Label selectedLabel = new Label("Selected: none");
+        selectedLabel.setStyle(Theme.LABEL_SUBTITLE);
 
         Label addLabel = new Label("Plays to add:");
         addLabel.setStyle(Theme.LABEL_SUBTITLE);
@@ -132,48 +81,95 @@ public class HomeScreen {
         playsField.setPrefWidth(80);
         Theme.focusField(playsField);
 
-        Button updateBtn = new Button("Update");
+        Button updateBtn = new Button("Update Play Count");
         updateBtn.setStyle(Theme.BTN_PRIMARY);
         updateBtn.setMinHeight(40);
         Theme.hoverPrimary(updateBtn);
-        Label updateResult = new Label("");
 
-        updateRow.getChildren().addAll(idLabel, idField, addLabel, playsField, updateBtn);
+        updateRow.getChildren().addAll(selectedLabel, addLabel, playsField, updateBtn);
+
+        table.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            if (selected == null) {
+                selectedLabel.setText("Selected: none");
+            } else {
+                selectedLabel.setText("Selected: " + selected.getTrackName());
+            }
+        });
+
+        // Live search as user types
+        searchField.textProperty().addListener((obs, old, text) -> {
+            String q = text == null ? "" : text.trim();
+            if (q.isEmpty()) {
+                table.getItems().clear();
+                statusLabel.setText("");
+            } else {
+                List<Song> results = songService.search(q);
+                table.getItems().setAll(results);
+                if (results.isEmpty()) {
+                    statusLabel.setStyle(Theme.LABEL_ERROR);
+                    statusLabel.setText("No songs found matching '" + q + "'");
+                } else {
+                    statusLabel.setStyle(Theme.LABEL_SUCCESS);
+                    statusLabel.setText("Found " + results.size() + " song(s)");
+                }
+            }
+        });
 
         searchBtn.setOnAction(e -> {
             String q = searchField.getText().trim();
             if (q.isEmpty()) return;
             List<Song> results = songService.search(q);
             table.getItems().setAll(results);
-            table.setVisible(!results.isEmpty());
-            updateRow.setVisible(!results.isEmpty());
             if (results.isEmpty()) {
-                updateResult.setStyle(Theme.LABEL_ERROR);
-                updateResult.setText("No songs found.");
+                statusLabel.setStyle(Theme.LABEL_ERROR);
+                statusLabel.setText("No songs found matching '" + q + "'");
             } else {
-                updateResult.setText("");
+                statusLabel.setStyle(Theme.LABEL_SUCCESS);
+                statusLabel.setText("Found " + results.size() + " song(s)");
             }
         });
 
-        updateBtn.setOnAction(e -> {
-            int id    = Store.parseInt(idField.getText());
-            int toAdd = Store.parseInt(playsField.getText());
-            if (id <= 0) { updateResult.setStyle(Theme.LABEL_ERROR); updateResult.setText("Invalid ID."); return; }
-            if (toAdd < 0) { updateResult.setStyle(Theme.LABEL_ERROR); updateResult.setText("Cannot add negative plays."); return; }
-            Song selected = table.getItems().stream()
-                    .filter(s -> s.getSongId() == id).findFirst().orElse(null);
-            if (selected == null) { updateResult.setStyle(Theme.LABEL_ERROR); updateResult.setText("ID not in results."); return; }
-            int newCount = selected.getPlayCount() + toAdd;
-            songService.setPlayCount(id, newCount);
-            updateResult.setStyle(Theme.LABEL_SUCCESS);
-            updateResult.setText(selected.getTrackName() + " — " + selected.getPlayCount() + " + " + toAdd + " = " + newCount + " plays.");
-            List<Song> refreshed = songService.search(searchField.getText().trim());
-            table.getItems().setAll(refreshed);
+        showAllBtn.setOnAction(e -> {
+            List<Song> allSongs = songService.getAllSongs();
+            table.getItems().setAll(allSongs);
+            searchField.clear();
+            statusLabel.setStyle(Theme.LABEL_SUCCESS);
+            statusLabel.setText("Showing all " + allSongs.size() + " songs");
         });
 
-        playCard.getChildren().addAll(playTitle, playSub, searchRow, table, updateRow, updateResult);
+        searchField.setOnAction(e -> searchBtn.fire());
 
-        content.getChildren().addAll(title, sub, importCard, playCard);
+        updateBtn.setOnAction(e -> {
+            int toAdd = parseInt(playsField.getText());
+            Song selected = table.getSelectionModel().getSelectedItem();
+            if (selected == null) { 
+                statusLabel.setStyle(Theme.LABEL_ERROR); 
+                statusLabel.setText("Please select a song from the table first."); 
+                return; 
+            }
+            if (toAdd <= 0) { 
+                statusLabel.setStyle(Theme.LABEL_ERROR); 
+                statusLabel.setText("Please enter a positive number of plays to add."); 
+                return; 
+            }
+            int newCount = selected.getPlayCount() + toAdd;
+            songService.setPlayCount(selected.getSongId(), user.getUserId(), newCount);
+            statusLabel.setStyle(Theme.LABEL_SUCCESS);
+            statusLabel.setText("✓ Updated " + selected.getTrackName() + ": " + selected.getPlayCount() + " + " + toAdd + " = " + newCount + " plays");
+            
+            // Refresh the table
+            String currentSearch = searchField.getText().trim();
+            if (currentSearch.isEmpty()) {
+                table.getItems().setAll(songService.getAllSongs());
+            } else {
+                table.getItems().setAll(songService.search(currentSearch));
+            }
+            table.getSelectionModel().clearSelection();
+            selectedLabel.setText("Selected: none");
+            playsField.clear();
+        });
+
+        content.getChildren().addAll(title, sub, searchRow, statusLabel, table, updateRow);
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background-color: transparent; -fx-background: " + Theme.BG_DARK + ";");
@@ -187,30 +183,110 @@ public class HomeScreen {
         table.setStyle(Theme.TABLE);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<Song, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(d -> new javafx.beans.property.SimpleIntegerProperty(d.getValue().getSongId()).asObject());
-        idCol.setMaxWidth(60);
-
-        TableColumn<Song, String> nameCol = new TableColumn<>("Track");
+        // Clickable track name column that opens Spotify link
+        TableColumn<Song, String> nameCol = new TableColumn<>("Track Name");
         nameCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getTrackName()));
+        nameCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    javafx.scene.control.Hyperlink link = new javafx.scene.control.Hyperlink(item);
+                    link.setStyle("-fx-text-fill: " + Theme.ACCENT + "; -fx-font-weight: bold;");
+                    link.setOnAction(e -> {
+                        Song song = getTableView().getItems().get(getIndex());
+                        String url = song.getLink();
+                        if (url != null && !url.isBlank()) {
+                            try {
+                                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    });
+                    setGraphic(link);
+                }
+            }
+        });
 
         TableColumn<Song, String> artistCol = new TableColumn<>("Artists");
         artistCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getArtists().replace("|", ", ")));
+        artistCol.setStyle("-fx-text-fill: white;");
+
+        TableColumn<Song, String> albumCol = new TableColumn<>("Album");
+        albumCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getAlbumName()));
+        albumCol.setStyle("-fx-text-fill: white;");
+
+        TableColumn<Song, String> lengthCol = new TableColumn<>("Length");
+        lengthCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getLength()));
+        lengthCol.setMaxWidth(70);
+        lengthCol.setStyle("-fx-text-fill: white;");
+
+        TableColumn<Song, String> moodCol = new TableColumn<>("Mood");
+        moodCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getMood()));
+        moodCol.setMaxWidth(90);
+        moodCol.setStyle("-fx-text-fill: white;");
 
         TableColumn<Song, Integer> playsCol = new TableColumn<>("Plays");
         playsCol.setCellValueFactory(d -> new javafx.beans.property.SimpleIntegerProperty(d.getValue().getPlayCount()).asObject());
-        playsCol.setMaxWidth(80);
+        playsCol.setMaxWidth(65);
+        playsCol.setStyle("-fx-text-fill: white;");
 
-        table.getColumns().addAll(idCol, nameCol, artistCol, playsCol);
+        table.getColumns().addAll(nameCol, artistCol, albumCol, lengthCol, moodCol, playsCol);
         styleTable(table);
+        
         return table;
     }
 
-    static void styleTable(TableView<?> table) {
-        table.setStyle(
-                "-fx-background-color: " + Theme.BG_CARD + ";" +
-                        "-fx-border-color: " + Theme.BORDER + ";" +
-                        "-fx-border-radius: 8;" +
-                        "-fx-table-cell-border-color: " + Theme.BORDER + ";");
+    static <T> void styleTable(TableView<T> table) {
+        String css = Theme.TABLE +
+                "-fx-control-inner-background: " + Theme.BG_CARD + ";";
+        table.setStyle(css);
+        
+        table.setRowFactory(tv -> {
+            TableRow<T> row = new TableRow<>();
+            row.setStyle("-fx-text-fill: white;");
+            row.hoverProperty().addListener((obs, old, isHover) -> {
+                if (row.isEmpty()) {
+                    row.setStyle("-fx-text-fill: white;");
+                } else if (isHover) {
+                    row.setStyle("-fx-background-color: " + Theme.BG_ELEVATED + "; -fx-text-fill: white;");
+                } else {
+                    row.setStyle("-fx-text-fill: white;");
+                }
+            });
+            return row;
+        });
+        
+        // Style headers after table is rendered
+        table.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                javafx.application.Platform.runLater(() -> {
+                    // Style header labels
+                    table.lookupAll(".column-header .label").forEach(node -> {
+                        ((Label) node).setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+                    });
+                    // Style header backgrounds with darker color
+                    table.lookupAll(".column-header").forEach(node -> {
+                        node.setStyle("-fx-background-color: #1a1a2e;");
+                    });
+                    table.lookupAll(".column-header-background").forEach(node -> {
+                        node.setStyle("-fx-background-color: #1a1a2e;");
+                    });
+                });
+            }
+        });
+    }
+
+    // Helper method to parse integer safely
+    private static int parseInt(String text) {
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }
