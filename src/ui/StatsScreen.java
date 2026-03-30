@@ -14,13 +14,17 @@ import service.StatsService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 public class StatsScreen {
 
     private final User         user;
-    private final StatsService statsService = new StatsService();
+    private final StatsService statsService;
 
-    public StatsScreen(User user) { this.user = user; }
+    public StatsScreen(User user) {
+        this.user = user;
+        this.statsService = new StatsService(user.getUserId());
+    }
 
     public Scene getScene() {
         BorderPane root = new BorderPane();
@@ -41,10 +45,16 @@ public class StatsScreen {
 
         // overview stat cards
         HBox overviewRow = new HBox(16);
+        int totalPlays = statsService.getTotalPlays();
+        double avgMoodScore = statsService.getAverageMoodScore();
+        String avgMoodDisplay = totalPlays == 0 ? "None" : String.format(Locale.US, "%.2f / 1.00", avgMoodScore);
+        String topMoodDisplay = totalPlays == 0 ? "None" : statsService.getTopMood();
+        
         overviewRow.getChildren().addAll(
-                statCard("Total Plays",    String.valueOf(statsService.getTotalPlays())),
+                statCard("Total Plays",    String.valueOf(totalPlays)),
                 statCard("Minutes Listened", String.valueOf(statsService.getTotalMinutes())),
-                statCard("Top Mood",       statsService.getTopMood())
+                statCard("Top Mood",       topMoodDisplay),
+                statCard("Avg Mood Score", avgMoodDisplay)
         );
 
         // top songs
@@ -61,8 +71,8 @@ public class StatsScreen {
         }
 
         // top artists and top genres side by side
-        HBox bottomRow = new HBox(16);
-        HBox.setHgrow(bottomRow, Priority.ALWAYS);
+        HBox topRow = new HBox(16);
+        HBox.setHgrow(topRow, Priority.ALWAYS);
 
         VBox topArtistsCard = sectionCard("Top Artists");
         List<Map.Entry<String, Integer>> artists = statsService.getTopArtists();
@@ -88,8 +98,21 @@ public class StatsScreen {
         }
         HBox.setHgrow(topGenresCard, Priority.ALWAYS);
 
-        bottomRow.getChildren().addAll(topArtistsCard, topGenresCard);
-        content.getChildren().addAll(title, sub, overviewRow, topSongsCard, bottomRow);
+        topRow.getChildren().addAll(topArtistsCard, topGenresCard);
+
+        // top albums on separate row below
+        VBox topAlbumsCard = sectionCard("Top Albums");
+        List<Map.Entry<String, Integer>> albums = statsService.getTopAlbums();
+        if (albums.isEmpty()) {
+            topAlbumsCard.getChildren().add(emptyLabel("No data yet."));
+        } else {
+            int rank = 1;
+            for (Map.Entry<String, Integer> e : albums.stream().limit(5).toList()) {
+                topAlbumsCard.getChildren().add(rankRow(rank++, e.getKey(), "", e.getValue() + " plays"));
+            }
+        }
+
+        content.getChildren().addAll(title, sub, overviewRow, topSongsCard, topRow, topAlbumsCard);
         scroll.setContent(content);
         root.setCenter(scroll);
         return new Scene(root, 1100, 720);
