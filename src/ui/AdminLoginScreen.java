@@ -1,6 +1,5 @@
-// LoginScreen.java
-// First screen the user sees. Collects email and password.
-// Routes to HomeScreen for regular users or AdminScreen for admins.
+// AdminLoginScreen.java
+// Login screen specifically for admin users
 
 package ui;
 
@@ -15,7 +14,7 @@ import model.Admin;
 import model.User;
 import service.AuthService;
 
-public class LoginScreen {
+public class AdminLoginScreen {
 
     private final AuthService authService = new AuthService();
 
@@ -34,7 +33,7 @@ public class LoginScreen {
                         "-fx-font-size: 42px;" +
                         "-fx-font-weight: bold;");
 
-        Label tagline = new Label("Your personal music analytics system.\nTrack, analyse and discover.");
+        Label tagline = new Label("Admin Portal\n\nManage users, view statistics,\nand curate recommendations.");
         tagline.setStyle(
                 "-fx-text-fill: " + Theme.TEXT_MUTED + ";" +
                         "-fx-font-size: 14px;" +
@@ -47,9 +46,9 @@ public class LoginScreen {
         stats.setAlignment(Pos.CENTER);
         stats.setPadding(new Insets(40, 0, 0, 0));
         stats.getChildren().addAll(
-                statBlock("Track", "Play counts"),
-                statBlock("Discover", "New songs"),
-                statBlock("Analyze", "Your library")
+                statBlock("Manage", "Users"),
+                statBlock("View", "Statistics"),
+                statBlock("Curate", "Recommendations")
         );
 
         left.getChildren().addAll(logo, tagline, stats);
@@ -60,27 +59,27 @@ public class LoginScreen {
         right.setPadding(new Insets(60, 80, 60, 80));
         right.setStyle("-fx-background-color: " + Theme.BG_DARK + ";");
 
-        Label title = new Label("Welcome back");
+        Label title = new Label("Admin Access");
         title.setStyle(Theme.LABEL_TITLE);
 
-        Label subtitle = new Label("Sign in to your account");
+        Label subtitle = new Label("Sign in with your admin credentials");
         subtitle.setStyle(Theme.LABEL_SUBTITLE);
 
         VBox form = new VBox(12);
         form.setMaxWidth(360);
 
-        Label emailLabel = new Label("EMAIL");
+        Label emailLabel = new Label("ADMIN EMAIL");
         emailLabel.setStyle(Theme.LABEL_SECTION);
         TextField emailField = new TextField();
-        emailField.setPromptText("you@example.com");
+        emailField.setPromptText("admin@musify.local");
         emailField.setStyle(Theme.FIELD);
         emailField.setMaxWidth(Double.MAX_VALUE);
         Theme.focusField(emailField);
 
-        Label passLabel = new Label("PASSWORD");
+        Label passLabel = new Label("ADMIN PASSWORD");
         passLabel.setStyle(Theme.LABEL_SECTION);
         PasswordField passField = new PasswordField();
-        passField.setPromptText("Enter your password");
+        passField.setPromptText("Enter admin password");
         passField.setStyle(Theme.FIELD);
         passField.setMaxWidth(Double.MAX_VALUE);
         Theme.focusField(passField);
@@ -89,35 +88,35 @@ public class LoginScreen {
         errorLabel.setStyle(Theme.LABEL_ERROR);
         errorLabel.setWrapText(true);
 
-        CheckBox adminMode = new CheckBox("Login as Admin");
-        adminMode.setStyle(Theme.LABEL_SUBTITLE);
-
-        Button loginBtn = new Button("Sign In");
+        Button loginBtn = new Button("Sign In as Admin");
         loginBtn.setStyle(Theme.BTN_PRIMARY);
         loginBtn.setMaxWidth(Double.MAX_VALUE);
         loginBtn.setMinHeight(42);
         Theme.hoverPrimary(loginBtn);
 
-        Label registerLink = new Label("Don't have an account? Register here");
+        Label registerLink = new Label("Create another admin account");
         registerLink.setStyle(Theme.LABEL_ACCENT);
         registerLink.setOnMouseClicked(e ->
-                AppContext.primaryStage.setScene(new RegisterScreen().getScene()));
+                AppContext.primaryStage.setScene(new AdminRegisterScreen().getScene()));
+
+        Label backLink = new Label("← Back to role selection");
+        backLink.setStyle(Theme.LABEL_SUBTITLE + "-fx-cursor: hand;");
+        backLink.setOnMouseClicked(e ->
+                AppContext.primaryStage.setScene(new RoleSelectionScreen().getScene()));
 
         loginBtn.setOnAction(e -> {
             String email = emailField.getText().trim();
             String pass  = passField.getText();
             try {
                 User user = authService.login(email, pass);
-                if (adminMode.isSelected() && !(user instanceof Admin)) {
-                    errorLabel.setText("This account is not an admin account.");
+                
+                // Ensure only admins can log in through admin portal
+                if (!(user instanceof Admin)) {
+                    errorLabel.setText("This account is not an admin account. Please use the user login.");
                     return;
                 }
 
-                if (user instanceof Admin) {
-                    AppContext.primaryStage.setScene(new AdminScreen(user).getScene());
-                } else {
-                    AppContext.primaryStage.setScene(new HomeScreen(user).getScene());
-                }
+                AppContext.primaryStage.setScene(new AdminHomeScreen(user).getScene());
             } catch (AuthException ex) {
                 errorLabel.setText(ex.getMessage());
             } catch (Exception ex) {
@@ -131,10 +130,10 @@ public class LoginScreen {
         form.getChildren().addAll(
                 emailLabel, emailField,
                 passLabel, passField,
-                adminMode,
                 errorLabel,
                 loginBtn,
-                registerLink
+                registerLink,
+                backLink
         );
 
         right.getChildren().addAll(title, subtitle, form);

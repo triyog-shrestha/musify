@@ -1,6 +1,5 @@
-// RegisterScreen.java
-// Collects username, email and password for a new account.
-// Routes to HomeScreen on successful registration.
+// UserRegisterScreen.java
+// Registration screen for regular users
 
 package ui;
 
@@ -13,7 +12,7 @@ import javafx.scene.layout.*;
 import model.User;
 import service.AuthService;
 
-public class RegisterScreen {
+public class UserRegisterScreen {
 
     private final AuthService authService = new AuthService();
 
@@ -32,7 +31,7 @@ public class RegisterScreen {
                         "-fx-font-size: 42px;" +
                         "-fx-font-weight: bold;");
 
-        Label tagline = new Label("Create your account and start\ntracking your music taste.");
+        Label tagline = new Label("User Registration\n\nCreate your account and start\ntracking your music taste.");
         tagline.setStyle(
                 "-fx-text-fill: " + Theme.TEXT_MUTED + ";" +
                         "-fx-font-size: 14px;" +
@@ -47,7 +46,7 @@ public class RegisterScreen {
         right.setPadding(new Insets(60, 80, 60, 80));
         right.setStyle("-fx-background-color: " + Theme.BG_DARK + ";");
 
-        Label title = new Label("Create account");
+        Label title = new Label("Create user account");
         title.setStyle(Theme.LABEL_TITLE);
 
         Label subtitle = new Label("Join Musify and discover your listening habits");
@@ -75,7 +74,7 @@ public class RegisterScreen {
         Label passLabel = new Label("PASSWORD");
         passLabel.setStyle(Theme.LABEL_SECTION);
         PasswordField passField = new PasswordField();
-        passField.setPromptText("Choose a password");
+        passField.setPromptText("Choose a password (min 8 characters)");
         passField.setStyle(Theme.FIELD);
         passField.setMaxWidth(Double.MAX_VALUE);
         Theme.focusField(passField);
@@ -93,7 +92,12 @@ public class RegisterScreen {
         Label loginLink = new Label("Already have an account? Sign in");
         loginLink.setStyle(Theme.LABEL_ACCENT);
         loginLink.setOnMouseClicked(e ->
-                AppContext.primaryStage.setScene(new LoginScreen().getScene()));
+                AppContext.primaryStage.setScene(new UserLoginScreen().getScene()));
+
+        Label backLink = new Label("← Back to role selection");
+        backLink.setStyle(Theme.LABEL_SUBTITLE + "-fx-cursor: hand;");
+        backLink.setOnMouseClicked(e ->
+                AppContext.primaryStage.setScene(new RoleSelectionScreen().getScene()));
 
         registerBtn.setOnAction(e -> {
             String username = nameField.getText().trim();
@@ -115,7 +119,8 @@ public class RegisterScreen {
                 passLabel, passField,
                 errorLabel,
                 registerBtn,
-                loginLink
+                loginLink,
+                backLink
         );
 
         right.getChildren().addAll(title, subtitle, form);

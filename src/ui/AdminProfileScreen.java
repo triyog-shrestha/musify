@@ -1,5 +1,5 @@
-// ProfileScreen.java
-// Displays user details and allows updating username, email and password.
+// AdminProfileScreen.java
+// Admin profile screen - Similar to listener ProfileScreen.
 
 package ui;
 
@@ -12,12 +12,14 @@ import javafx.scene.layout.*;
 import model.User;
 import service.AuthService;
 
-public class ProfileScreen {
+public class AdminProfileScreen {
 
-    private final User        user;
+    private final User user;
     private final AuthService authService = new AuthService();
 
-    public ProfileScreen(User user) { this.user = user; }
+    public AdminProfileScreen(User user) {
+        this.user = user;
+    }
 
     public Scene getScene() {
         BorderPane root = new BorderPane();
@@ -32,15 +34,14 @@ public class ProfileScreen {
         content.setPadding(new Insets(40));
         content.setMaxWidth(700);
 
-        Label title = new Label("Profile");
+        Label title = new Label("Admin Profile");
         title.setStyle(Theme.LABEL_TITLE);
 
-        // avatar + info card
+        // Avatar + info card
         VBox infoCard = new VBox(16);
         infoCard.setStyle(Theme.CARD);
         infoCard.setPadding(new Insets(28));
 
-        // avatar circle
         HBox avatarRow = new HBox(20);
         avatarRow.setAlignment(Pos.CENTER_LEFT);
         Label avatar = new Label(user.getUsername().substring(0, 1).toUpperCase());
@@ -61,13 +62,15 @@ public class ProfileScreen {
         nameDisplay.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 18px; -fx-font-weight: bold;");
         Label emailDisplay = new Label(user.getEmail());
         emailDisplay.setStyle(Theme.LABEL_SUBTITLE);
+        Label roleDisplay = new Label("Administrator");
+        roleDisplay.setStyle("-fx-text-fill: " + Theme.ACCENT + "; -fx-font-size: 12px; -fx-font-weight: bold;");
         Label joinedDisplay = new Label("Member since " + user.getCreatedAt().toLocalDate().toString());
         joinedDisplay.setStyle(Theme.LABEL_SUBTITLE);
-        userInfo.getChildren().addAll(nameDisplay, emailDisplay, joinedDisplay);
+        userInfo.getChildren().addAll(nameDisplay, emailDisplay, roleDisplay, joinedDisplay);
         avatarRow.getChildren().addAll(avatar, userInfo);
         infoCard.getChildren().add(avatarRow);
 
-        // edit profile card
+        // Edit profile card
         VBox editCard = new VBox(16);
         editCard.setStyle(Theme.CARD);
         editCard.setPadding(new Insets(28));
@@ -98,7 +101,7 @@ public class ProfileScreen {
         Theme.hoverPrimary(saveBtn);
 
         saveBtn.setOnAction(e -> {
-            String newName  = nameField.getText().trim();
+            String newName = nameField.getText().trim();
             String newEmail = emailField.getText().trim();
             try {
                 authService.updateProfile(user, newName, newEmail);
@@ -115,7 +118,7 @@ public class ProfileScreen {
 
         editCard.getChildren().addAll(editTitle, nameLabel, nameField, emailLabel, emailField, editResult, saveBtn);
 
-        // change password card
+        // Change password card
         VBox passCard = new VBox(16);
         passCard.setStyle(Theme.CARD);
         passCard.setPadding(new Insets(28));
@@ -149,7 +152,8 @@ public class ProfileScreen {
                         oldField.getText(), newField.getText());
                 passResult.setStyle(Theme.LABEL_SUCCESS);
                 passResult.setText("Password changed successfully.");
-                oldField.clear(); newField.clear();
+                oldField.clear();
+                newField.clear();
             } catch (AuthException ex) {
                 passResult.setStyle(Theme.LABEL_ERROR);
                 passResult.setText(ex.getMessage());

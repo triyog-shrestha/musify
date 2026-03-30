@@ -12,14 +12,21 @@ public class Song {
     private String mood;
     private String link;
     private int    playCount;
+    private int    totalArtists;
 
-    // Constructor for a NEW song coming from CSV import
+    // Constructor for a NEW song from import
     public Song(String trackName, String albumName, String artists,
                 String length, String genres, String mood, String link) {
+        this(trackName, albumName, artists, 0, length, genres, mood, link);
+    }
+
+    public Song(String trackName, String albumName, String artists,
+                int totalArtists, String length, String genres, String mood, String link) {
         this.songId     = -1;
         this.trackName  = trackName;
         this.albumName  = albumName;
         this.artists    = artists;
+        this.totalArtists = totalArtists;
         this.length     = length;
         this.genres     = genres;
         this.mood       = mood;
@@ -27,13 +34,19 @@ public class Song {
         this.playCount  = 0;
     }
 
-    // Constructor for loading an EXISTING song from songs.csv
+    // Constructor for loading an EXISTING song from database
     public Song(int songId, String trackName, String albumName, String artists,
                 String length, String genres, String mood, String link, int playCount) {
+        this(songId, trackName, albumName, artists, 0, length, genres, mood, link, playCount);
+    }
+
+    public Song(int songId, String trackName, String albumName, String artists,
+                int totalArtists, String length, String genres, String mood, String link, int playCount) {
         this.songId    = songId;
         this.trackName = trackName;
         this.albumName = albumName;
         this.artists   = artists;
+        this.totalArtists = totalArtists;
         this.length    = length;
         this.genres    = genres;
         this.mood      = mood;
@@ -51,10 +64,12 @@ public class Song {
     public String getMood()      { return mood; }
     public String getLink()      { return link; }
     public int    getPlayCount() { return playCount; }
+    public int    getTotalArtists() { return totalArtists; }
 
     // Setters
     public void setSongId(int songId)       { this.songId = songId; }
     public void setPlayCount(int playCount) { this.playCount = playCount; }
+    public void setTotalArtists(int totalArtists) { this.totalArtists = totalArtists; }
 
     @Override
     public String toString() {

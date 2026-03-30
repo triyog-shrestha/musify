@@ -3,8 +3,8 @@ package service;
 import dao.UserDAO;
 import dao.RecommendationDAO;
 import exception.AuthException;
+import model.Recommendation;
 import model.User;
-import util.Importer;
 
 import java.util.List;
 
@@ -23,13 +23,19 @@ public class AdminService {
         return authService.register(username, email, password);
     }
 
+    public void updateUser(User user) {
+        userDAO.updateUser(user);
+    }
+
     public void deleteUser(int userId) {
         userDAO.deleteUser(userId);
     }
 
-//    public int importRecommendationCSV(String filePath) {
-//        List<model.Recommendation> recs = Importer.parseRecommendations(filePath);
-//        recDAO.insertBatch(recs);
-//        return recs.size();
-//    }
+    public List<Recommendation> getAllRecommendations() {
+        return recDAO.getAll();
+    }
+
+    public void deleteRecommendation(int recId) {
+        recDAO.delete(recId);
+    }
 }

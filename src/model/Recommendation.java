@@ -14,7 +14,21 @@ public class Recommendation {
     private String mood;
     private String link;
 
-    // Constructor for loading from recommendations.csv
+    // Constructor for NEW recommendations before assigning an ID
+    public Recommendation(String trackName, String albumName,
+                          String artists, String length, String genres,
+                          String mood, String link) {
+        this.recId = -1;
+        this.trackName = trackName;
+        this.albumName = albumName;
+        this.artists = artists;
+        this.length = length;
+        this.genres = genres;
+        this.mood = mood;
+        this.link = link;
+    }
+
+    // Constructor for loading from database
     public Recommendation(int recId, String trackName, String albumName,
                           String artists, String length, String genres,
                           String mood, String link) {

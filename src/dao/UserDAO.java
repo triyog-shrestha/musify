@@ -1,118 +1,187 @@
 // UserDAO.java
-// All read and write operations for users.csv.
-// This is the only class that directly accesses user data.
+// All read and write operations for users.
 
 package dao;
 
 import model.Admin;
 import model.User;
-import util.Store;
+import util.Database;
 
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class UserDAO {
 
-    private static final String HEADER =
-            "userId,username,email,password,role,createdAt";
-    private static final String FILE = Store.DATA_DIR + "users.csv";
-
-    // create the users.csv file if it does not exist
     public void init() {
-        Store.createFileIfMissing(FILE, HEADER);
+        Database.init();
     }
 
     // save a new user and assign the generated ID back
     public void createUser(User user) {
-        int id = Store.nextId(FILE);
-        user.setUserId(id);
-        Store.append(FILE, toRow(user));
+        String sql = "INSERT INTO `User`(username,email,password,role,createdAt) VALUES(?,?,?,?,?)";
+        String role = (user instanceof Admin) ? "ADMIN" : "LISTENER";
+
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, user.getUsername());
+            ps.setString(2, user.getEmail());
+            ps.setString(3, user.getPassword());
+            ps.setString(4, role);
+            ps.setTimestamp(5, Timestamp.valueOf(user.getCreatedAt()));
+            ps.executeUpdate();
+
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    int id = keys.getInt(1);
+                    user.setUserId(id);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not create user.", e);
+        }
     }
 
     // find a user by email — used during login
     public User getUserByEmail(String email) {
-        for (String[] row : Store.readAll(FILE)) {
-            if (row.length >= 6 && row[2].equalsIgnoreCase(email)) {
-                return fromRow(row);
+        String sql = "SELECT userId,username,email,password,role,createdAt FROM `User` WHERE LOWER(email)=LOWER(?) LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return fromRow(rs);
             }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not fetch user by email.", e);
         }
         return null;
     }
 
     // find a user by ID
     public User getUserById(int userId) {
-        for (String[] row : Store.readAll(FILE)) {
-            if (row.length >= 6 && Store.parseInt(row[0]) == userId) {
-                return fromRow(row);
+        String sql = "SELECT userId,username,email,password,role,createdAt FROM `User` WHERE userId=? LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return fromRow(rs);
             }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not fetch user by id.", e);
         }
         return null;
     }
 
     // returns true if email is already registered
     public boolean emailExists(String email) {
-        return getUserByEmail(email) != null;
+        String sql = "SELECT 1 FROM `User` WHERE LOWER(email)=LOWER(?) LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not validate email uniqueness.", e);
+        }
+    }
+
+    public boolean usernameExists(String username) {
+        String sql = "SELECT 1 FROM `User` WHERE LOWER(username)=LOWER(?) LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not validate username uniqueness.", e);
+        }
+    }
+
+    public boolean emailExistsForOther(int userId, String email) {
+        String sql = "SELECT 1 FROM `User` WHERE LOWER(email)=LOWER(?) AND userId<>? LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not validate email uniqueness.", e);
+        }
+    }
+
+    public boolean usernameExistsForOther(int userId, String username) {
+        String sql = "SELECT 1 FROM `User` WHERE LOWER(username)=LOWER(?) AND userId<>? LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not validate username uniqueness.", e);
+        }
     }
 
     // update an existing user row
     public void updateUser(User user) {
-        List<String[]> all = Store.readAll(FILE);
-        List<String> updated = new ArrayList<>();
-        for (String[] row : all) {
-            if (Store.parseInt(row[0]) == user.getUserId()) {
-                updated.add(toRow(user));
-            } else {
-                updated.add(String.join(",", row));
-            }
+        String sql = "UPDATE `User` SET username=?, email=?, password=?, role=?, createdAt=? WHERE userId=?";
+        String role = (user instanceof Admin) ? "ADMIN" : "LISTENER";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, user.getUsername());
+            ps.setString(2, user.getEmail());
+            ps.setString(3, user.getPassword());
+            ps.setString(4, role);
+            ps.setTimestamp(5, Timestamp.valueOf(user.getCreatedAt()));
+            ps.setInt(6, user.getUserId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not update user.", e);
         }
-        Store.overwrite(FILE, updated);
     }
 
-    // convert User or Admin object to CSV row
-    private String toRow(User user) {
-        String role = (user instanceof Admin) ? "ADMIN" : "USER";
-        return user.getUserId() + "," +
-                Store.safe(user.getUsername()) + "," +
-                Store.safe(user.getEmail()) + "," +
-                Store.safe(user.getPassword()) + "," +
-                role + "," +
-                user.getCreatedAt().toString();
-    }
+    // convert result row to User or Admin object
+    private User fromRow(ResultSet rs) throws SQLException {
+        int id = rs.getInt("userId");
+        String username = rs.getString("username");
+        String email = rs.getString("email");
+        String password = rs.getString("password");
+        String role = rs.getString("role");
+        LocalDateTime date = rs.getTimestamp("createdAt").toLocalDateTime();
 
-    // convert CSV row to User or Admin object
-    private User fromRow(String[] row) {
-        int id             = Store.parseInt(row[0]);
-        String username    = row[1];
-        String email       = row[2];
-        String password    = row[3];
-        String role        = row[4];
-        LocalDateTime date = LocalDateTime.parse(row[5]);
-
-        if (role.equals("ADMIN")) {
+        if ("ADMIN".equalsIgnoreCase(role)) {
             return new Admin(id, username, email, password, date);
         }
         return new User(id, username, email, password, date);
     }
 
-    // in UserDAO.java
-
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        for (String[] row : Store.readAll(FILE)) {
-            if (row.length >= 6) users.add(fromRow(row));
+        String sql = "SELECT userId,username,email,password,role,createdAt FROM `User` ORDER BY userId";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) users.add(fromRow(rs));
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not fetch all users.", e);
         }
         return users;
     }
 
     public void deleteUser(int userId) {
-        List<String[]> all = Store.readAll(FILE);
-        List<String> kept = new ArrayList<>();
-        for (String[] row : all) {
-            if (Store.parseInt(row[0]) != userId) {
-                kept.add(String.join(",", row));
-            }
+        String sql = "DELETE FROM `User` WHERE userId=?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not delete user.", e);
         }
-        Store.overwrite(FILE, kept);
     }
 }

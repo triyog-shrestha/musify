@@ -4,8 +4,9 @@
 
 import javafx.application.Application;
 import javafx.stage.Stage;
-import ui.LoginScreen;
-import util.Store;
+import ui.AppContext;
+import ui.RoleSelectionScreen;
+import util.Database;
 import dao.UserDAO;
 
 public class Main extends Application {
@@ -16,9 +17,10 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) {
         primaryStage = stage;
+        AppContext.primaryStage = stage;
 
-        // initialise CSV files on first run
-        Store.init();
+        // reset and initialize database tables on startup
+        Database.init();
         new UserDAO().init();
 
         // window settings
@@ -29,8 +31,8 @@ public class Main extends Application {
         stage.setMinHeight(600);
         stage.setResizable(true);
 
-        // start at the login screen
-        stage.setScene(new LoginScreen().getScene());
+        // start at the role selection screen
+        stage.setScene(new RoleSelectionScreen().getScene());
         stage.show();
     }
 

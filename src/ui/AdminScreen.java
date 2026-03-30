@@ -10,6 +10,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import model.Recommendation;
 import model.User;
 import service.AdminService;
 import service.AuthService;
@@ -121,6 +122,55 @@ public class AdminScreen {
 
         userCard.getChildren().addAll(userTitle, userTable, createTitle, createRow, createResult);
 
+        // recommendations management card
+        VBox recsCard = new VBox(16);
+        recsCard.setStyle(Theme.CARD);
+        recsCard.setPadding(new Insets(24));
+
+        Label recsTitle = new Label("Recommendations Management");
+        recsTitle.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 15px; -fx-font-weight: bold;");
+        Label recsSub = new Label("Import songs to add to the recommendations pool");
+        recsSub.setStyle(Theme.LABEL_SUBTITLE);
+
+        HBox importRow = new HBox(12);
+        importRow.setAlignment(Pos.CENTER_LEFT);
+        Button importRecsBtn = new Button("Import CSV to Recommendations");
+        importRecsBtn.setStyle(Theme.BTN_PRIMARY);
+        importRecsBtn.setMinHeight(40);
+        Theme.hoverPrimary(importRecsBtn);
+        Label importResult = new Label("");
+        importRow.getChildren().addAll(importRecsBtn, importResult);
+
+        List<Recommendation> currentRecs = adminService.getAllRecommendations();
+        Label recsCount = new Label("Current recommendations in pool: " + currentRecs.size());
+        recsCount.setStyle(Theme.LABEL_SUBTITLE);
+
+        importRecsBtn.setOnAction(e -> {
+            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+            fileChooser.setTitle("Import Recommendations from CSV");
+            fileChooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("CSV Files", "*.csv")
+            );
+            java.io.File file = fileChooser.showOpenDialog(AppContext.primaryStage);
+            if (file != null) {
+                try {
+                    service.RecommendationService recService = new service.RecommendationService();
+                    int count = recService.importFromCSV(file.getAbsolutePath());
+                    importResult.setStyle(Theme.LABEL_SUCCESS);
+                    importResult.setText("Successfully imported " + count + " recommendations!");
+                    
+                    // Update count
+                    List<Recommendation> updatedRecs = adminService.getAllRecommendations();
+                    recsCount.setText("Current recommendations in pool: " + updatedRecs.size());
+                } catch (Exception ex) {
+                    importResult.setStyle(Theme.LABEL_ERROR);
+                    importResult.setText("Import failed: " + ex.getMessage());
+                }
+            }
+        });
+
+        recsCard.getChildren().addAll(recsTitle, recsSub, importRow, recsCount);
+
         // app stats card
         VBox statsCard = new VBox(16);
         statsCard.setStyle(Theme.CARD);
@@ -137,43 +187,7 @@ public class AdminScreen {
 
         statsCard.getChildren().addAll(statsTitle, statsRow);
 
-        // recommendation import card
-        VBox recCard = new VBox(16);
-        recCard.setStyle(Theme.CARD);
-        recCard.setPadding(new Insets(24));
-
-        Label recTitle = new Label("Recommendation Library");
-        recTitle.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 15px; -fx-font-weight: bold;");
-
-        HBox recRow = new HBox(12);
-        recRow.setAlignment(Pos.CENTER_LEFT);
-        TextField recPath = new TextField();
-        recPath.setPromptText("Path to recommendation CSV...");
-        recPath.setStyle(Theme.FIELD);
-        recPath.setPrefWidth(460);
-        Theme.focusField(recPath);
-        Button recImport = new Button("Import");
-        recImport.setStyle(Theme.BTN_PRIMARY);
-        recImport.setMinHeight(40);
-        Theme.hoverPrimary(recImport);
-        Label recResult = new Label("");
-
-        recRow.getChildren().addAll(recPath, recImport);
-
-        recImport.setOnAction(e -> {
-            int count = adminService.importRecommendationCSV(recPath.getText().trim().replace("\"", ""));
-            if (count > 0) {
-                recResult.setStyle(Theme.LABEL_SUCCESS);
-                recResult.setText("Imported " + count + " recommendations.");
-            } else {
-                recResult.setStyle(Theme.LABEL_ERROR);
-                recResult.setText("No recommendations imported.");
-            }
-        });
-
-        recCard.getChildren().addAll(recTitle, recRow, recResult);
-
-        content.getChildren().addAll(title, sub, userCard, statsCard, recCard);
+        content.getChildren().addAll(title, sub, userCard, recsCard, statsCard);
         scroll.setContent(content);
         root.setCenter(scroll);
         return new Scene(root, 1100, 720);
