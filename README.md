@@ -1,4 +1,4 @@
-# Musify (Java + JavaFX + MySQL)
+# Musify
 
 Musify is a JavaFX desktop application for importing Spotify data, managing your music library, and viewing personalized listening analytics. The application features a Spotify-inspired UI with separate user and admin portals.
 
@@ -150,13 +150,6 @@ Default connection uses:
 - Database: `musify`
 - User: `root`
 - Password: (empty)
-
-### Run the Application
-
-Using Maven:
-```bash
-mvn clean javafx:run
-```
 
 ## Usage
 
