@@ -1,6 +1,8 @@
-// RecommendationDAO.java
-// All read/write operations for recommendations using normalized tables.
-
+/**
+ * Data Access Object for recommendation operations.
+ * Manages the admin-curated recommendation pool using normalized tables.
+ * Similar structure to SongDAO but for recommendations without play counts.
+ */
 package dao;
 
 import model.Recommendation;
@@ -12,6 +14,13 @@ import java.util.*;
 
 public class RecommendationDAO {
 
+    /**
+     * Inserts multiple recommendations in a batch operation.
+     * Skips duplicates based on Spotify URL to maintain uniqueness.
+     * 
+     * @param recs List of recommendations to insert
+     * @return Number of recommendations actually inserted (duplicates skipped)
+     */
     public int insertBatch(List<Recommendation> recs) {
         if (recs == null || recs.isEmpty()) return 0;
 
@@ -84,7 +93,12 @@ public class RecommendationDAO {
         return inserted;
     }
 
-    // Get all recommendations with joined data
+    /**
+     * Retrieves all recommendations with joined artist/album/genre metadata.
+     * Uses GROUP_CONCAT to aggregate multiple artists and genres per recommendation.
+     * 
+     * @return List of all recommendations in the pool
+     */
     public List<Recommendation> getAll() {
         List<Recommendation> recs = new ArrayList<>();
         String sql = """
@@ -115,7 +129,12 @@ public class RecommendationDAO {
         return recs;
     }
 
-    // Get all unique genres from the database
+    /**
+     * Retrieves all unique genre names from the Genre table.
+     * Used for genre filter dropdown menus.
+     * 
+     * @return Sorted list of all genre names
+     */
     public List<String> getAllGenres() {
         List<String> genres = new ArrayList<>();
         String sql = "SELECT genreName FROM Genre ORDER BY genreName";
@@ -131,7 +150,12 @@ public class RecommendationDAO {
         return genres;
     }
 
-    // Filter by genre (case-insensitive)
+    /**
+     * Filters recommendations by a specific genre (case-insensitive).
+     * 
+     * @param genre Genre name to filter by
+     * @return Recommendations that include the specified genre
+     */
     public List<Recommendation> filterByGenre(String genre) {
         List<Recommendation> results = new ArrayList<>();
         String requested = genre == null ? "" : genre.trim().toLowerCase();
@@ -145,7 +169,12 @@ public class RecommendationDAO {
         return results;
     }
 
-    // Filter by mood
+    /**
+     * Filters recommendations by mood.
+     * 
+     * @param mood Mood category to filter by
+     * @return Recommendations with the specified mood
+     */
     public List<Recommendation> filterByMood(String mood) {
         List<Recommendation> results = new ArrayList<>();
         for (Recommendation rec : getAll()) {
@@ -156,6 +185,12 @@ public class RecommendationDAO {
         return results;
     }
 
+    /**
+     * Deletes a recommendation from the database.
+     * Cascade delete will remove all associated artist/genre relationships.
+     * 
+     * @param recId Recommendation ID to delete
+     */
     public void delete(int recId) {
         // Cascade delete handles junction tables
         String sql = "DELETE FROM Recommendation WHERE recId=?";
@@ -168,6 +203,12 @@ public class RecommendationDAO {
         }
     }
 
+    /**
+     * Updates a recommendation's metadata including artists and genres.
+     * Rebuilds all relationships in a transaction.
+     * 
+     * @param rec Recommendation with updated information
+     */
     public void update(Recommendation rec) {
         try (Connection conn = Database.getConnection()) {
             conn.setAutoCommit(false);
@@ -226,10 +267,9 @@ public class RecommendationDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helper methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Ensures an album exists, creating it if needed. Returns albumId.
+     */
     private int ensureAlbum(Connection conn, String albumName) throws SQLException {
         if (albumName == null || albumName.isBlank()) albumName = "Unknown Album";
 
@@ -252,6 +292,9 @@ public class RecommendationDAO {
         throw new SQLException("Could not create album: " + albumName);
     }
 
+    /**
+     * Ensures an artist exists, creating it if needed. Returns artistId.
+     */
     private int ensureArtist(Connection conn, String artistName) throws SQLException {
         if (artistName == null || artistName.isBlank()) artistName = "Unknown Artist";
 
@@ -274,6 +317,9 @@ public class RecommendationDAO {
         throw new SQLException("Could not create artist: " + artistName);
     }
 
+    /**
+     * Ensures a genre exists, creating it if needed. Returns genreId.
+     */
     private int ensureGenre(Connection conn, String genreName) throws SQLException {
         if (genreName == null || genreName.isBlank()) genreName = "Unknown";
 
@@ -296,6 +342,9 @@ public class RecommendationDAO {
         throw new SQLException("Could not create genre: " + genreName);
     }
 
+    /**
+     * Links a recommendation to an artist in the junction table.
+     */
     private void linkRecArtist(Connection conn, int recId, int artistId) throws SQLException {
         String sql = "INSERT IGNORE INTO Recommendation_Artist(recId, artistId) VALUES(?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -305,6 +354,9 @@ public class RecommendationDAO {
         }
     }
 
+    /**
+     * Links a recommendation to a genre in the junction table.
+     */
     private void linkRecGenre(Connection conn, int recId, int genreId) throws SQLException {
         String sql = "INSERT IGNORE INTO Recommendation_Genre(recId, genreId) VALUES(?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -314,6 +366,9 @@ public class RecommendationDAO {
         }
     }
 
+    /**
+     * Converts mm:ss format to SQL TIME (HH:mm:ss).
+     */
     private Time toSqlTime(String mmss) {
         if (mmss == null || mmss.isBlank()) return Time.valueOf("00:00:00");
         String[] parts = mmss.split(":");
@@ -323,6 +378,9 @@ public class RecommendationDAO {
         return Time.valueOf("00:00:00");
     }
 
+    /**
+     * Converts SQL TIME back to mm:ss display format.
+     */
     private String timeToMmSs(String sqlTime) {
         if (sqlTime == null || sqlTime.length() < 5) return "0:00";
         if (sqlTime.length() >= 8) {
@@ -331,7 +389,9 @@ public class RecommendationDAO {
         return sqlTime;
     }
 
-    // SQL row → Recommendation object
+    /**
+     * Converts a database result row to a Recommendation object.
+     */
     private Recommendation fromRow(ResultSet rs) throws SQLException {
         String tracklength = rs.getString("tracklength");
         return new Recommendation(

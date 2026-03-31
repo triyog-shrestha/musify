@@ -1,8 +1,8 @@
-// Theme.java
-// Shared colours, font sizes and reusable style strings for all screens.
-// All screens use this so the look stays consistent across the app.
-// Using Spotify's official brand colors.
-
+/**
+ * Theme constants and styling utilities for consistent UI appearance.
+ * Provides Spotify-inspired color palette and reusable style strings.
+ * All screens use these constants for visual consistency.
+ */
 package ui;
 
 import javafx.scene.control.Hyperlink;
@@ -13,9 +13,9 @@ import java.net.URI;
 
 public class Theme {
 
-    // Spotify brand colours
-    public static final String BG_DARK      = "#121212";   // Spotify black background
-    public static final String BG_CARD      = "#181818";   // Spotify card background
+    // Spotify brand color palette
+    public static final String BG_DARK      = "#121212";   // Main background
+    public static final String BG_CARD      = "#181818";   // Card background
     public static final String BG_ELEVATED  = "#282828";   // Spotify elevated surface
     public static final String ACCENT       = "#1DB954";   // Spotify green
     public static final String ACCENT_HOVER = "#1ED760";   // Spotify green hover
@@ -26,11 +26,11 @@ public class Theme {
     public static final String DANGER       = "#E91429";   // Spotify red/error
     public static final String SUCCESS      = "#1DB954";   // Spotify green
 
-    // base screen background
+    // Base screen background style
     public static final String SCREEN_BG =
             "-fx-background-color: " + BG_DARK + ";";
 
-    // card style
+    // Card container style
     public static final String CARD =
             "-fx-background-color: " + BG_CARD + ";" +
                     "-fx-background-radius: 8;" +
@@ -38,7 +38,7 @@ public class Theme {
                     "-fx-border-radius: 8;" +
                     "-fx-border-width: 0;";
 
-    // elevated card
+    // Elevated card with lighter background
     public static final String CARD_ELEVATED =
             "-fx-background-color: " + BG_ELEVATED + ";" +
                     "-fx-background-radius: 8;" +
@@ -46,7 +46,7 @@ public class Theme {
                     "-fx-border-radius: 8;" +
                     "-fx-border-width: 0;";
 
-    // primary button (Spotify green)
+    // Primary action button (Spotify green)
     public static final String BTN_PRIMARY =
             "-fx-background-color: " + ACCENT + ";" +
                     "-fx-text-fill: #000000;" +
@@ -56,6 +56,7 @@ public class Theme {
                     "-fx-cursor: hand;" +
                     "-fx-padding: 10 32;";
 
+    // Primary button hover state
     public static final String BTN_PRIMARY_HOVER =
             "-fx-background-color: " + ACCENT_HOVER + ";" +
                     "-fx-text-fill: #000000;" +
@@ -65,7 +66,7 @@ public class Theme {
                     "-fx-cursor: hand;" +
                     "-fx-padding: 10 32;";
 
-    // ghost button (outline)
+    // Outlined ghost button
     public static final String BTN_GHOST =
             "-fx-background-color: transparent;" +
                     "-fx-text-fill: " + TEXT_PRIMARY + ";" +
@@ -77,6 +78,7 @@ public class Theme {
                     "-fx-cursor: hand;" +
                     "-fx-padding: 10 24;";
 
+    // Ghost button hover state
     public static final String BTN_GHOST_HOVER =
             "-fx-background-color: " + BG_ELEVATED + ";" +
                     "-fx-text-fill: " + TEXT_PRIMARY + ";" +
@@ -88,7 +90,7 @@ public class Theme {
                     "-fx-cursor: hand;" +
                     "-fx-padding: 10 24;";
 
-    // danger button
+    // Danger/delete button
     public static final String BTN_DANGER =
             "-fx-background-color: transparent;" +
                     "-fx-text-fill: " + DANGER + ";" +
@@ -100,7 +102,7 @@ public class Theme {
                     "-fx-cursor: hand;" +
                     "-fx-padding: 6 14;";
 
-    // text field
+    // Input field style
     public static final String FIELD =
             "-fx-background-color: " + BG_ELEVATED + ";" +
                     "-fx-text-fill: " + TEXT_PRIMARY + ";" +
@@ -112,6 +114,7 @@ public class Theme {
                     "-fx-border-width: 0;" +
                     "-fx-padding: 12 14;";
 
+    // Input field focus state
     public static final String FIELD_FOCUS =
             "-fx-background-color: " + BG_ELEVATED + ";" +
                     "-fx-text-fill: " + TEXT_PRIMARY + ";" +
@@ -122,12 +125,13 @@ public class Theme {
                     "-fx-border-width: 1;" +
                     "-fx-padding: 11 13;";
 
-    // label styles
+    // Large page title
     public static final String LABEL_TITLE =
             "-fx-text-fill: " + TEXT_PRIMARY + ";" +
                     "-fx-font-size: 28px;" +
                     "-fx-font-weight: bold;";
 
+    // Subtitle/description text
     public static final String LABEL_SUBTITLE =
             "-fx-text-fill: " + TEXT_MUTED + ";" +
                     "-fx-font-size: 13px;";
@@ -138,6 +142,7 @@ public class Theme {
                     "-fx-font-weight: bold;" +
                     "-fx-text-transform: uppercase;";
 
+    // Regular content text
     public static final String LABEL_VALUE =
             "-fx-text-fill: " + TEXT_PRIMARY + ";" +
                     "-fx-font-size: 14px;";
@@ -155,12 +160,13 @@ public class Theme {
                     "-fx-font-size: 13px;" +
                     "-fx-cursor: hand;";
 
-    // sidebar
+    // Sidebar panel style
     public static final String SIDEBAR =
             "-fx-background-color: #000000;" +
                     "-fx-border-color: transparent;" +
                     "-fx-border-width: 0;";
 
+    // Navigation menu item (inactive)
     public static final String NAV_ITEM =
             "-fx-background-color: transparent;" +
                     "-fx-text-fill: " + TEXT_MUTED + ";" +
@@ -172,6 +178,7 @@ public class Theme {
                     "-fx-background-radius: 4;" +
                     "-fx-border-radius: 4;";
 
+    // Navigation menu item (active/selected)
     public static final String NAV_ITEM_ACTIVE =
             "-fx-background-color: " + BG_ELEVATED + ";" +
                     "-fx-text-fill: " + TEXT_PRIMARY + ";" +
@@ -183,7 +190,7 @@ public class Theme {
                     "-fx-background-radius: 4;" +
                     "-fx-border-radius: 4;";
 
-    // table
+    // TableView style
     public static final String TABLE =
             "-fx-background-color: " + BG_CARD + ";" +
                     "-fx-table-cell-border-color: transparent;" +
@@ -193,7 +200,7 @@ public class Theme {
                     "-fx-selection-bar: " + BG_ELEVATED + ";" +
                     "-fx-selection-bar-non-focused: " + BG_ELEVATED + ";";
 
-    // stat card
+    // Statistics card container
     public static final String STAT_CARD =
             "-fx-background-color: " + BG_CARD + ";" +
                     "-fx-background-radius: 8;" +
@@ -202,23 +209,41 @@ public class Theme {
                     "-fx-border-width: 0;" +
                     "-fx-padding: 20;";
 
-    // hover helpers
+    /**
+     * Adds hover effect to primary buttons.
+     * Changes background color on mouse enter/exit.
+     */
     public static void hoverPrimary(javafx.scene.control.Button btn) {
         btn.setOnMouseEntered(e -> btn.setStyle(BTN_PRIMARY_HOVER));
         btn.setOnMouseExited(e  -> btn.setStyle(BTN_PRIMARY));
     }
 
+    /**
+     * Adds hover effect to ghost buttons.
+     * Changes background and border on mouse enter/exit.
+     */
     public static void hoverGhost(javafx.scene.control.Button btn) {
         btn.setOnMouseEntered(e -> btn.setStyle(BTN_GHOST_HOVER));
         btn.setOnMouseExited(e  -> btn.setStyle(BTN_GHOST));
     }
 
+    /**
+     * Adds focus border effect to text input fields.
+     * Adds white border when focused, removes when unfocused.
+     */
     public static void focusField(javafx.scene.control.TextInputControl field) {
         field.focusedProperty().addListener((obs, old, focused) -> {
             field.setStyle(focused ? FIELD_FOCUS : FIELD);
         });
     }
 
+    /**
+     * Creates a TableView cell that displays Spotify links as clickable hyperlinks.
+     * Opens the link in the system's default browser when clicked.
+     * 
+     * @param <T> The type of the TableView row item
+     * @return Configured TableCell for Spotify URLs
+     */
     public static <T> TableCell<T, String> spotifyLinkCell() {
         return new TableCell<T, String>() {
             private final Hyperlink link = new Hyperlink("Open");
@@ -231,7 +256,7 @@ public class Theme {
                     try {
                         Desktop.getDesktop().browse(new URI(url));
                     } catch (Exception ignored) {
-                        // Keep UI responsive if OS/browser integration fails.
+                        // Silently fail if browser integration is unavailable
                     }
                 });
             }

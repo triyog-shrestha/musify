@@ -1,15 +1,13 @@
-// Importer.java
-// Takes a raw Exportify CSV file and converts it directly into Song objects.
-// The user just points at the file from exportify.net — no manual cleaning needed.
-// Also accepts already-cleaned files as a fallback.
-//
-// Raw Exportify columns:
-// 0:TrackURI  1:TrackName  2:AlbumName  3:ArtistName(s)  4:ReleaseDate
-// 5:Duration(ms)  6:Popularity  7:Explicit  8:AddedBy  9:AddedAt
-// 10:Genres  11:RecordLabel  12:Danceability  13:Energy  14:Key
-// 15:Loudness  16:Mode  17:Speechiness  18:Acousticness  19:Instrumentalness
-// 20:Liveness  21:Valence  22:Tempo  23:TimeSignature
-
+/**
+ * CSV importer for Spotify Exportify format.
+ * Automatically detects and handles both raw Exportify files and cleaned CSV files.
+ * 
+ * Supported formats:
+ * 1. Raw Exportify (from exportify.net) - 24 columns with audio features
+ * 2. Cleaned CSV - simplified format with pre-calculated mood
+ * 
+ * Audio features from raw format are used to calculate mood automatically.
+ */
 package util;
 
 import model.Mood;
@@ -21,6 +19,12 @@ import java.util.*;
 
 public class Importer {
 
+    /**
+     * Imports songs from a CSV file. Auto-detects format.
+     * 
+     * @param filePath Path to CSV file (Exportify or cleaned format)
+     * @return List of Song objects parsed from the file
+     */
     public static List<Song> importFromCSV(String filePath) {
         List<Song> songs = new ArrayList<>();
 
@@ -60,9 +64,10 @@ public class Importer {
         return songs;
     }
 
-    // -------------------------------------------------------------------------
-    // Raw Exportify row parser
-    // -------------------------------------------------------------------------
+    /**
+     * Parses a row from raw Exportify CSV format (24+ columns).
+     * Extracts audio features and calculates mood using MoodCalculator.
+     */
     private static Song parseRawRow(String line) {
         String[] d = splitCSV(line);
         if (d.length < 23) return null;
@@ -90,12 +95,10 @@ public class Importer {
         return new Song(trackName, albumName, artists, totalArtists, length, genres, mood.name(), link);
     }
 
-    // -------------------------------------------------------------------------
-    // Already-cleaned row parser (fallback)
-    // Columns: 0:trackName 1:albumName 2:artists 3:totalArtists
-    //          4:releaseDate 5:length 6:popularity 7:addedDate
-    //          8:genres 9:mood 10:link
-    // -------------------------------------------------------------------------
+    /**
+     * Parses a row from cleaned CSV format (11 columns).
+     * Assumes mood is already calculated and included in the file.
+     */
     private static Song parseCleanedRow(String line) {
         String[] d = splitCSV(line);
         if (d.length < 11) return null;
@@ -111,10 +114,9 @@ public class Importer {
                 totalArtists, d[5].trim(), genres, d[9].trim(), d[10].trim());
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
+    /**
+     * Converts milliseconds to mm:ss format.
+     */
     private static String msToTime(String msStr) {
         try {
             long ms   = Long.parseLong(msStr);
@@ -125,6 +127,9 @@ public class Importer {
         }
     }
 
+    /**
+     * Converts a Spotify track URI to a full Spotify web URL.
+     */
     private static String spotifyLinkFromUri(String trackUri) {
         if (trackUri == null) return "";
         String clean = trackUri.trim();
@@ -132,6 +137,9 @@ public class Importer {
         return "https://open.spotify.com/track/" + clean.replace("spotify:track:", "");
     }
 
+    /**
+     * Normalizes artist names from semicolon-separated to pipe-separated format.
+     */
     private static String normalizeArtists(String raw) {
         if (raw == null || raw.isBlank()) return "";
         List<String> normalized = new ArrayList<>();
@@ -142,6 +150,9 @@ public class Importer {
         return String.join("|", normalized);
     }
 
+    /**
+     * Counts unique artists from a pipe-separated artist string.
+     */
     private static int countUniqueArtists(String normalizedArtists) {
         if (normalizedArtists == null || normalizedArtists.isBlank()) return 0;
         Set<String> unique = new HashSet<>();
@@ -152,11 +163,18 @@ public class Importer {
         return unique.size();
     }
 
+    /**
+     * Normalizes genres using GenreUtil and converts to pipe-separated format.
+     */
     private static String normalizeGenres(String rawGenres) {
         List<String> genres = GenreUtil.splitGenres(rawGenres == null ? "" : rawGenres);
         return String.join("|", genres);
     }
 
+    /**
+     * Splits a CSV line into fields, properly handling quoted values with embedded commas.
+     * Handles escaped quotes (double quotes) within quoted fields.
+     */
     private static String[] splitCSV(String line) {
         List<String> result = new ArrayList<>();
         boolean inQuotes = false;
@@ -191,8 +209,13 @@ public class Importer {
         catch (NumberFormatException e) { return 0; }
     }
 
-    // add this method to Importer.java
-
+    /**
+     * Imports recommendations from a CSV file (Exportify or app export format).
+     * Auto-detects format and converts rows to Recommendation objects.
+     * 
+     * @param filePath Path to recommendations CSV file
+     * @return List of Recommendation objects
+     */
     public static List<Recommendation> parseRecommendations(String filePath) {
         List<Recommendation> recs = new ArrayList<>();
 
@@ -232,6 +255,9 @@ public class Importer {
         return recs;
     }
 
+    /**
+     * Parses a raw Exportify row into a Recommendation object.
+     */
     private static Recommendation parseRawRec(String line) {
         String[] d = splitCSV(line);
         if (d.length < 23) return null;
@@ -259,6 +285,9 @@ public class Importer {
         return new Recommendation(trackName, albumName, artists, length, genres, mood.name(), link);
     }
 
+    /**
+     * Parses a cleaned CSV row into a Recommendation object.
+     */
     private static Recommendation parseCleanedRec(String line) {
         String[] d = splitCSV(line);
         if (d.length < 11) return null;
@@ -270,6 +299,10 @@ public class Importer {
                 d[5].trim(), normalizeGenres(d[8]), d[9].trim(), d[10].trim());
     }
 
+    /**
+     * Parses an app-exported recommendation CSV row.
+     * Format: recId, trackName, albumName, artists, length, genres, mood, link
+     */
     private static Recommendation parseAppRec(String line) {
         String[] d = splitCSV(line);
         if (d.length < 8) return null;

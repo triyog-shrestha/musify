@@ -1,6 +1,8 @@
-// AdminLoginScreen.java
-// Login screen specifically for admin users
-
+/**
+ * Login screen specifically for admin accounts.
+ * Prevents regular user accounts from logging in through this portal.
+ * Features link to admin registration and back button to role selection.
+ */
 package ui;
 
 import exception.AuthException;
@@ -18,6 +20,11 @@ public class AdminLoginScreen {
 
     private final AuthService authService = new AuthService();
 
+    /**
+     * Creates and returns the admin login scene.
+     * 
+     * @return Configured Scene object
+     */
     public Scene getScene() {
 
         // left panel — branding
@@ -145,6 +152,9 @@ public class AdminLoginScreen {
         return new Scene(root, 1100, 720);
     }
 
+    /**
+     * Creates a decorative stat block for the branding panel.
+     */
     private VBox statBlock(String title, String sub) {
         VBox box = new VBox(4);
         box.setAlignment(Pos.CENTER);

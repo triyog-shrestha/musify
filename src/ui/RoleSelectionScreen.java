@@ -1,6 +1,8 @@
-// RoleSelectionScreen.java
-// First screen - lets user choose whether to enter as User or Admin
-
+/**
+ * Initial role selection screen shown on application launch.
+ * Allows users to choose between Listener and Admin login portals.
+ * Features two card-style buttons with hover effects.
+ */
 package ui;
 
 import javafx.geometry.Insets;
@@ -12,6 +14,11 @@ import javafx.scene.text.TextAlignment;
 
 public class RoleSelectionScreen {
 
+    /**
+     * Creates and returns the JavaFX scene for role selection.
+     * 
+     * @return Configured Scene object
+     */
     public Scene getScene() {
         VBox root = new VBox(40);
         root.setAlignment(Pos.CENTER);
@@ -62,6 +69,15 @@ public class RoleSelectionScreen {
         return new Scene(root, 1100, 720);
     }
 
+    /**
+     * Creates a clickable role selection card with hover effects.
+     * 
+     * @param title       Role name (e.g., "LISTENER", "ADMIN")
+     * @param description Features list for this role
+     * @param accentColor Color to use for title and border
+     * @param onSelect    Action to run when card is clicked
+     * @return Configured VBox card
+     */
     private VBox createRoleCard(String title, String description, String accentColor, Runnable onSelect) {
         VBox card = new VBox(16);
         card.setAlignment(Pos.CENTER);

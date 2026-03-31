@@ -1,7 +1,16 @@
-// StatsService.java
-// Calculates all stats from the song library using normalized tables.
-// Multi-genre songs: each genre gets the full play count added to it.
-
+/**
+ * Statistics calculation service for user listening analytics.
+ * Computes various metrics from the user's library including top artists, albums,
+ * songs, genres, mood analysis, and total listening time.
+ * 
+ * Multi-Genre Counting:
+ * - Songs with multiple genres contribute their play count to EACH genre
+ * - Example: A song with "rock|pop" and 5 plays adds 5 to both rock and pop
+ * 
+ * Mood Scoring:
+ * - Weighted average based on play counts
+ * - ENERGETIC=1.0, HAPPY=0.8, FOCUSED=0.6, RELAXED=0.4, MELANCHOLIC=0.2
+ */
 package service;
 
 import dao.SongDAO;
@@ -17,17 +26,28 @@ public class StatsService {
     private final SongDAO dao = new SongDAO();
     private final int userId;
 
+    /**
+     * Creates a service without a specific user (fallback mode).
+     */
     public StatsService() {
         this.userId = -1;
     }
 
+    /**
+     * Creates a service for a specific user.
+     * 
+     * @param userId User whose statistics to calculate
+     */
     public StatsService(int userId) {
         this.userId = userId;
     }
 
-    // -------------------------------------------------------------------------
-    // Top Artists — sorted by total play count
-    // -------------------------------------------------------------------------
+    /**
+     * Calculates top artists sorted by total play count across all their songs.
+     * Uses database query when possible, falls back to in-memory calculation.
+     * 
+     * @return List of (artist name, total plays) entries sorted by play count (descending)
+     */
     public List<Map.Entry<String, Integer>> getTopArtists() {
         if (userId > 0) {
             String sql = """
@@ -56,9 +76,11 @@ public class StatsService {
         return sortedDesc(counts);
     }
 
-    // -------------------------------------------------------------------------
-    // Top Albums — sorted by total play count
-    // -------------------------------------------------------------------------
+    /**
+     * Calculates top albums sorted by total play count.
+     * 
+     * @return List of (album name, total plays) entries sorted by play count (descending)
+     */
     public List<Map.Entry<String, Integer>> getTopAlbums() {
         if (userId > 0) {
             String sql = """
@@ -85,9 +107,11 @@ public class StatsService {
         return sortedDesc(counts);
     }
 
-    // -------------------------------------------------------------------------
-    // Top Songs — sorted by play count
-    // -------------------------------------------------------------------------
+    /**
+     * Retrieves top songs sorted by play count.
+     * 
+     * @return List of songs ordered by play count (highest first)
+     */
     public List<Song> getTopSongs() {
         if (userId > 0) {
             String sql = """
@@ -145,10 +169,12 @@ public class StatsService {
         return songs;
     }
 
-    // -------------------------------------------------------------------------
-    // Top Genres — each genre gets the FULL play count of the song
-    // e.g. a song with genres "rap|r&b" and 5 plays adds 5 to rap AND 5 to r&b
-    // -------------------------------------------------------------------------
+    /**
+     * Calculates top genres by total play count.
+     * Multi-genre songs contribute their full play count to each genre.
+     * 
+     * @return List of (genre name, total plays) entries sorted by play count (descending)
+     */
     public List<Map.Entry<String, Integer>> getTopGenres() {
         if (userId > 0) {
             String sql = """
@@ -180,9 +206,11 @@ public class StatsService {
         return sortedDesc(counts);
     }
 
-    // -------------------------------------------------------------------------
-    // Top Mood — mood with the most total plays
-    // -------------------------------------------------------------------------
+    /**
+     * Determines the mood with the highest total play count.
+     * 
+     * @return Mood category name (e.g., "ENERGETIC", "HAPPY")
+     */
     public String getTopMood() {
         if (userId > 0) {
             String sql = """
@@ -222,9 +250,11 @@ public class StatsService {
                 .orElse("RELAXED");
     }
 
-    // -------------------------------------------------------------------------
-    // Total minutes listened and total plays
-    // -------------------------------------------------------------------------
+    /**
+     * Calculates total number of plays across all songs.
+     * 
+     * @return Sum of all play counts
+     */
     public int getTotalPlays() {
         if (userId > 0) {
             String sql = "SELECT COALESCE(SUM(playCount),0) FROM Library WHERE userId=?";
@@ -244,6 +274,12 @@ public class StatsService {
         return total;
     }
 
+    /**
+     * Calculates total listening time in minutes.
+     * Formula: SUM(track_length_in_seconds * play_count) / 60
+     * 
+     * @return Total minutes listened
+     */
     public long getTotalMinutes() {
         if (userId > 0) {
             String sql = """
@@ -271,6 +307,12 @@ public class StatsService {
         return totalSeconds / 60;
     }
 
+    /**
+     * Calculates the average mood score weighted by play counts.
+     * Used by recommendation engine to match user's mood preference.
+     * 
+     * @return Weighted average mood score (0.0 to 1.0)
+     */
     public double getAverageMoodScore() {
         if (userId > 0) {
             String sql = """
@@ -313,16 +355,18 @@ public class StatsService {
         return weighted / totalPlays;
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
+    /**
+     * Sorts a map by values in descending order.
+     */
     private List<Map.Entry<String, Integer>> sortedDesc(Map<String, Integer> map) {
         List<Map.Entry<String, Integer>> list = new ArrayList<>(map.entrySet());
         list.sort((a, b) -> b.getValue() - a.getValue());
         return list;
     }
 
+    /**
+     * Parses a time string (mm:ss) to total seconds.
+     */
     private long parseSeconds(String length) {
         try {
             String[] parts = length.split(":");
@@ -332,6 +376,9 @@ public class StatsService {
         }
     }
 
+    /**
+     * Converts SQL TIME format to mm:ss display format.
+     */
     private String timeToMmSs(String sqlTime) {
         if (sqlTime == null || sqlTime.length() < 5) return "0:00";
         if (sqlTime.length() >= 8) {
@@ -340,6 +387,9 @@ public class StatsService {
         return sqlTime;
     }
 
+    /**
+     * Maps mood category to numeric score for calculations.
+     */
     private double moodScore(String mood) {
         if (mood == null) return 0;
         return switch (mood.trim().toUpperCase()) {
@@ -352,6 +402,10 @@ public class StatsService {
         };
     }
 
+    /**
+     * Executes a SQL query that returns (String, Integer) pairs.
+     * Used for ranking queries (top artists, genres, etc.).
+     */
     private List<Map.Entry<String, Integer>> queryRankMap(String sql) {
         List<Map.Entry<String, Integer>> results = new ArrayList<>();
         try (Connection conn = Database.getConnection();

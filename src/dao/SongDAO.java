@@ -1,6 +1,13 @@
-// SongDAO.java
-// All read/write operations for songs using normalized tables.
-
+/**
+ * Data Access Object for song operations in the normalized database schema.
+ * Manages songs, their relationships to artists/genres/albums, and user library linkage.
+ * 
+ * Database design uses normalization to avoid duplication:
+ * - Song table: Core song data
+ * - Artist/Genre/Album tables: Unique entities  
+ * - Junction tables: Many-to-many relationships
+ * - Library table: User-song linkage with play counts
+ */
 package dao;
 
 import model.Song;
@@ -12,13 +19,29 @@ import java.util.*;
 
 public class SongDAO {
 
-    // -------------------------------------------------------------------------
-    // INSERT - creates Song and links in junction tables
-    // -------------------------------------------------------------------------
+    /**
+     * Inserts a song into the database for the default user (userId=1).
+     * 
+     * @param song Song object to insert
+     */
     public void insert(Song song) {
         insert(song, 1);
     }
 
+    /**
+     * Inserts a song into the database and links it to a specific user's library.
+     * 
+     * Process:
+     * 1. Check if song already exists by Spotify URL (avoid duplicates)
+     * 2. If exists, just link to user's library
+     * 3. If new, create album, song, and relationships
+     * 4. Link to user's library with play count
+     * 
+     * All operations are wrapped in a transaction for atomicity.
+     * 
+     * @param song   Song object to insert
+     * @param userId User who owns this song
+     */
     public void insert(Song song, int userId) {
         try (Connection conn = Database.getConnection()) {
             conn.setAutoCommit(false);
@@ -89,10 +112,21 @@ public class SongDAO {
         }
     }
 
+    /**
+     * Inserts multiple songs into the database for the default user.
+     * 
+     * @param songs List of songs to insert
+     */
     public void insertAll(List<Song> songs) {
         insertAll(songs, 1);
     }
 
+    /**
+     * Inserts multiple songs into the database for a specific user.
+     * 
+     * @param songs  List of songs to insert
+     * @param userId User who owns these songs
+     */
     public void insertAll(List<Song> songs, int userId) {
         if (songs == null || songs.isEmpty()) return;
         for (Song song : songs) {
@@ -100,13 +134,22 @@ public class SongDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // READ - fetches songs with joined data
-    // -------------------------------------------------------------------------
+    /**
+     * Retrieves all songs for the default user with joined artist/album/genre data.
+     * 
+     * @return List of songs with all metadata
+     */
     public List<Song> getAll() {
         return getAllForUser(1);
     }
 
+    /**
+     * Retrieves all songs for a specific user with joined metadata.
+     * Uses GROUP_CONCAT to aggregate multiple artists and genres.
+     * 
+     * @param userId User whose songs to retrieve
+     * @return List of songs from user's library
+     */
     public List<Song> getAllForUser(int userId) {
         List<Song> songs = new ArrayList<>();
         String sql = """
@@ -142,10 +185,23 @@ public class SongDAO {
         return songs;
     }
 
+    /**
+     * Searches songs by track name (case-insensitive, partial match) for default user.
+     * 
+     * @param query Search query
+     * @return List of matching songs
+     */
     public List<Song> search(String query) {
         return search(query, 1);
     }
 
+    /**
+     * Searches songs by track name for a specific user.
+     * 
+     * @param query  Search query (partial match, case-insensitive)
+     * @param userId User whose library to search
+     * @return List of matching songs
+     */
     public List<Song> search(String query, int userId) {
         List<Song> results = new ArrayList<>();
         String sql = """
@@ -182,13 +238,24 @@ public class SongDAO {
         return results;
     }
 
-    // -------------------------------------------------------------------------
-    // UPDATE
-    // -------------------------------------------------------------------------
+    /**
+     * Updates the play count for a song in the default user's library.
+     * 
+     * @param songId   Song to update
+     * @param newCount New play count value
+     */
     public void updatePlayCount(int songId, int newCount) {
         updatePlayCount(songId, 1, newCount);
     }
 
+    /**
+     * Updates the play count for a song in a specific user's library.
+     * If the song isn't in their library yet, adds it with the given play count.
+     * 
+     * @param songId   Song to update
+     * @param userId   User whose library to update
+     * @param newCount New play count value
+     */
     public void updatePlayCount(int songId, int userId, int newCount) {
         String sql = "UPDATE Library SET playCount=? WHERE songId=? AND userId=?";
         try (Connection conn = Database.getConnection();
@@ -213,10 +280,22 @@ public class SongDAO {
         }
     }
 
+    /**
+     * Updates a song's metadata for the default user.
+     * 
+     * @param song Song with updated information
+     */
     public void updateSong(Song song) {
         updateSong(song, 1);
     }
 
+    /**
+     * Updates a song's complete metadata including artists and genres.
+     * Rebuilds all relationships in a transaction to maintain consistency.
+     * 
+     * @param song   Song with updated information
+     * @param userId User whose library contains this song
+     */
     public void updateSong(Song song, int userId) {
         try (Connection conn = Database.getConnection()) {
             conn.setAutoCommit(false);
@@ -263,9 +342,12 @@ public class SongDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // DELETE
-    // -------------------------------------------------------------------------
+    /**
+     * Deletes a song from the database completely.
+     * Cascade delete will remove all associated relationships.
+     * 
+     * @param songId Song to delete
+     */
     public void delete(int songId) {
         // Cascade delete handles junction tables
         String sql = "DELETE FROM Song WHERE songId=?";
@@ -278,10 +360,10 @@ public class SongDAO {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helper methods for normalized structure
-    // -------------------------------------------------------------------------
-    
+    /**
+     * Ensures an album exists in the database, creating it if needed.
+     * Returns the albumId either way.
+     */
     private int ensureAlbum(Connection conn, String albumName) throws SQLException {
         if (albumName == null || albumName.isBlank()) albumName = "Unknown Album";
         
@@ -304,6 +386,10 @@ public class SongDAO {
         throw new SQLException("Could not create album: " + albumName);
     }
     
+    /**
+     * Ensures an artist exists in the database, creating it if needed.
+     * Returns the artistId either way.
+     */
     private int ensureArtist(Connection conn, String artistName) throws SQLException {
         if (artistName == null || artistName.isBlank()) artistName = "Unknown Artist";
         
@@ -326,6 +412,10 @@ public class SongDAO {
         throw new SQLException("Could not create artist: " + artistName);
     }
     
+    /**
+     * Ensures a genre exists in the database, creating it if needed.
+     * Returns the genreId either way.
+     */
     private int ensureGenre(Connection conn, String genreName) throws SQLException {
         if (genreName == null || genreName.isBlank()) genreName = "Unknown";
         
@@ -348,6 +438,10 @@ public class SongDAO {
         throw new SQLException("Could not create genre: " + genreName);
     }
     
+    /**
+     * Creates a link between a song and an artist in the Song_Artist junction table.
+     * Uses INSERT IGNORE to prevent duplicate entries.
+     */
     private void linkSongArtist(Connection conn, int songId, int artistId) throws SQLException {
         String sql = "INSERT IGNORE INTO Song_Artist(songId, artistId) VALUES(?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -357,6 +451,10 @@ public class SongDAO {
         }
     }
     
+    /**
+     * Creates a link between a song and a genre in the Song_Genre junction table.
+     * Uses INSERT IGNORE to prevent duplicate entries.
+     */
     private void linkSongGenre(Connection conn, int songId, int genreId) throws SQLException {
         String sql = "INSERT IGNORE INTO Song_Genre(songId, genreId) VALUES(?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -367,7 +465,9 @@ public class SongDAO {
     }
     
     /**
-     * Find a song by its Spotify URL. Returns the songId if found, -1 otherwise.
+     * Finds a song by its Spotify URL to detect duplicates.
+     * 
+     * @return songId if found, -1 otherwise
      */
     private int findSongBySpotifyUrl(Connection conn, String spotifyUrl) throws SQLException {
         if (spotifyUrl == null || spotifyUrl.isBlank()) return -1;
@@ -385,7 +485,8 @@ public class SongDAO {
     }
     
     /**
-     * Link a song to a user's library if not already linked.
+     * Links a song to a user's library if not already linked.
+     * Avoids duplicate library entries.
      */
     private void linkToLibraryIfNotExists(Connection conn, int userId, int songId, int playCount) throws SQLException {
         String checkSql = "SELECT 1 FROM Library WHERE userId = ? AND songId = ?";
@@ -409,6 +510,10 @@ public class SongDAO {
         }
     }
     
+    /**
+     * Removes all artist links for a song and recreates them.
+     * Used when updating a song's artist list.
+     */
     private void rebuildSongArtists(Connection conn, int songId, String artists) throws SQLException {
         // Remove old links
         try (PreparedStatement ps = conn.prepareStatement("DELETE FROM Song_Artist WHERE songId=?")) {
@@ -425,6 +530,10 @@ public class SongDAO {
         }
     }
     
+    /**
+     * Removes all genre links for a song and recreates them.
+     * Used when updating a song's genre list.
+     */
     private void rebuildSongGenres(Connection conn, int songId, String genres) throws SQLException {
         // Remove old links
         try (PreparedStatement ps = conn.prepareStatement("DELETE FROM Song_Genre WHERE songId=?")) {
@@ -440,6 +549,9 @@ public class SongDAO {
         }
     }
     
+    /**
+     * Converts mm:ss format to SQL TIME (HH:mm:ss).
+     */
     private Time toSqlTime(String mmss) {
         if (mmss == null || mmss.isBlank()) return Time.valueOf("00:00:00");
         String[] parts = mmss.split(":");
@@ -449,6 +561,9 @@ public class SongDAO {
         return Time.valueOf("00:00:00");
     }
     
+    /**
+     * Converts SQL TIME format (HH:mm:ss) back to mm:ss display format.
+     */
     private String timeToMmSs(String sqlTime) {
         if (sqlTime == null || sqlTime.length() < 5) return "0:00";
         // Handle both "HH:mm:ss" and "mm:ss" formats
@@ -458,9 +573,9 @@ public class SongDAO {
         return sqlTime;
     }
 
-    // -------------------------------------------------------------------------
-    // SQL row helpers
-    // -------------------------------------------------------------------------
+    /**
+     * Converts a database result row to a Song object with all metadata.
+     */
     private Song fromRow(ResultSet rs) throws SQLException {
         String tracklength = rs.getString("tracklength");
         String lengthFormatted = timeToMmSs(tracklength);

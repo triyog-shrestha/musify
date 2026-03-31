@@ -1,8 +1,17 @@
-// RecommendationService.java
-// Logic for fetching and filtering recommendations.
-// Songs already in the user's library are excluded using the Spotify URL as identifier.
-// Recommendations only appear after user imports songs AND has play counts > 0.
-
+/**
+ * Personalized recommendation engine for users.
+ * Analyzes user's listening patterns (genres, mood, play counts) to suggest
+ * new songs from the admin-curated recommendation pool.
+ * 
+ * Recommendation Strategies:
+ * 1. By Top Genre: Matches user's most-played genre
+ * 2. By Top Mood: Matches user's average mood score
+ * 3. Personalized: Combines genre and mood matching with scoring
+ * 
+ * Filtering Logic:
+ * - Excludes songs already in user's library (by Spotify URL)
+ * - Requires user to have imported songs with play counts > 0
+ */
 package service;
 
 import dao.RecommendationDAO;
@@ -20,19 +29,33 @@ public class RecommendationService {
     private final StatsService      statsService;
     private final int               userId;
 
+    /**
+     * Creates a service for the default user (userId=1).
+     */
     public RecommendationService() {
         this.userId = 1;
         this.songDAO = new SongDAO();
         this.statsService = new StatsService();
     }
 
+    /**
+     * Creates a service for a specific user.
+     * 
+     * @param userId User for whom to generate recommendations
+     */
     public RecommendationService(int userId) {
         this.userId = userId;
         this.songDAO = new SongDAO();
         this.statsService = new StatsService(userId);
     }
 
-    // Import recommendations from CSV file
+    /**
+     * Imports recommendations from a CSV file into the global recommendation pool.
+     * Duplicates (by Spotify URL) are automatically skipped.
+     * 
+     * @param filePath Path to CSV file (Exportify or cleaned format)
+     * @return Number of new recommendations imported (duplicates not counted)
+     */
     public int importFromCSV(String filePath) {
         List<Song> songs = Importer.importFromCSV(filePath);
         if (songs.isEmpty()) return 0;
@@ -55,8 +78,10 @@ public class RecommendationService {
     }
 
     /**
-     * Checks if the user has imported songs AND has at least one play count > 0.
-     * Recommendations should only be shown when this returns true.
+     * Checks if the user has sufficient listening history for recommendations.
+     * Requires at least one song with play count > 0.
+     * 
+     * @return true if user has listening history, false otherwise
      */
     public boolean hasListeningHistory() {
         List<Song> userSongs = songDAO.getAllForUser(userId);
@@ -69,7 +94,7 @@ public class RecommendationService {
     }
 
     /**
-     * Builds a set of all Spotify links already in the user's library.
+     * Builds a set of all Spotify URLs in the user's library.
      * Used to filter out songs the user already has.
      */
     private Set<String> getLibraryLinks() {
@@ -82,7 +107,8 @@ public class RecommendationService {
     }
 
     /**
-     * Removes recommendations whose Spotify URL already exists in the user's library.
+     * Filters out recommendations that are already in the user's library.
+     * Comparison is done via Spotify URL (case-insensitive).
      */
     private List<Recommendation> excludeLibrarySongs(List<Recommendation> recs) {
         Set<String> libraryLinks = getLibraryLinks();
@@ -97,8 +123,10 @@ public class RecommendationService {
     }
 
     /**
-     * All recommendations excluding songs already in user's library.
-     * Returns empty list if user has no listening history.
+     * Returns all recommendations excluding those in user's library.
+     * Requires listening history to prevent empty libraries from seeing all recommendations.
+     * 
+     * @return Filtered recommendation list
      */
     public List<Recommendation> getAll() {
         if (!hasListeningHistory()) return List.of();
@@ -106,8 +134,10 @@ public class RecommendationService {
     }
 
     /**
-     * Recommendations matching user's top genre based on play counts.
-     * Returns empty list if user has no listening history.
+     * Recommendations matching the user's most-played genre.
+     * Falls back to all recommendations if no genre match is found.
+     * 
+     * @return Genre-matched recommendations
      */
     public List<Recommendation> byTopGenre() {
         if (!hasListeningHistory()) return List.of();
@@ -121,9 +151,11 @@ public class RecommendationService {
     }
 
     /**
-     * Recommendations matching user's average mood score.
-     * Uses the user's weighted average mood score to find recommendations with similar moods.
-     * Returns empty list if user has no listening history.
+     * Recommendations with mood similar to the user's average mood.
+     * Scores recommendations by distance from user's average mood score.
+     * Returns recommendations within 0.2 mood distance, or top 20 by similarity.
+     * 
+     * @return Mood-matched recommendations
      */
     public List<Recommendation> byTopMood() {
         if (!hasListeningHistory()) return List.of();
@@ -164,9 +196,15 @@ public class RecommendationService {
     }
 
     /**
-     * Combined recommendations: matches both top genre AND similar mood score.
-     * Provides the most personalized recommendations.
-     * Returns empty list if user has no listening history.
+     * Personalized recommendations combining genre and mood matching.
+     * 
+     * Scoring algorithm:
+     * - +1.0 for each matching top genre (up to 3 top genres checked)
+     * - +mood similarity score (1.0 - distance from user's average mood)
+     * 
+     * Results are sorted by total score (highest first).
+     * 
+     * @return Personalized recommendations sorted by relevance
      */
     public List<Recommendation> getPersonalized() {
         if (!hasListeningHistory()) return List.of();
@@ -219,14 +257,18 @@ public class RecommendationService {
     }
 
     /**
-     * Manual genre filter, excluding songs already in user's library.
+     * Filters recommendations by a specific genre.
+     * 
+     * @param genre Genre to filter by
+     * @return Recommendations containing the specified genre
      */
     public List<Recommendation> byGenre(String genre) {
         return excludeLibrarySongs(dao.filterByGenre(genre));
     }
 
     /**
-     * Maps mood string to numeric score (0.0 - 1.0).
+     * Maps mood categories to numeric scores for comparison.
+     * ENERGETIC=1.0, HAPPY=0.8, FOCUSED=0.6, RELAXED=0.4, MELANCHOLIC=0.2
      */
     private double moodScore(String mood) {
         if (mood == null) return 0.5;
@@ -241,7 +283,7 @@ public class RecommendationService {
     }
 
     /**
-     * Helper class for scoring recommendations.
+     * Helper class for scoring and sorting recommendations.
      */
     private static class ScoredRecommendation {
         final Recommendation rec;

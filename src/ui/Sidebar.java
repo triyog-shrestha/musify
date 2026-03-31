@@ -1,7 +1,8 @@
-// Sidebar.java
-// Reusable left navigation bar used by all main screens.
-// Routes admins to admin-specific screens and listeners to listener screens.
-
+/**
+ * Reusable left navigation sidebar for main application screens.
+ * Displays user information, navigation menu items, and logout button.
+ * Routes differently for admins vs regular users (admins skip Library screen).
+ */
 package ui;
 
 import javafx.geometry.Insets;
@@ -16,6 +17,12 @@ import model.User;
 
 public class Sidebar extends VBox {
 
+    /**
+     * Creates a sidebar with navigation for the given user.
+     * 
+     * @param active Currently active screen name (will be highlighted)
+     * @param user   Current logged-in user (Admin or regular User)
+     */
     public Sidebar(String active, User user) {
         setStyle(Theme.SIDEBAR);
         setMinWidth(200);
@@ -81,6 +88,10 @@ public class Sidebar extends VBox {
         getChildren().add(logout);
     }
 
+    /**
+     * Creates a navigation button with appropriate styling.
+     * Active buttons are highlighted, inactive buttons have hover effects.
+     */
     private Button navButton(String text, boolean active) {
         Button btn = new Button(text);
         btn.setStyle(active ? Theme.NAV_ITEM_ACTIVE : Theme.NAV_ITEM);
@@ -92,6 +103,10 @@ public class Sidebar extends VBox {
         return btn;
     }
 
+    /**
+     * Navigates to the appropriate screen based on the menu item selected.
+     * Routes differ for admins and regular users.
+     */
     private void navigate(String item, User user) {
         boolean isAdmin = user instanceof Admin;
         

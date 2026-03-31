@@ -1,6 +1,8 @@
-// UserDAO.java
-// All read and write operations for users.
-
+/**
+ * Data Access Object for user account operations.
+ * Handles CRUD operations for User and Admin accounts in the database.
+ * Supports user authentication, registration, and profile management.
+ */
 package dao;
 
 import model.Admin;
@@ -14,11 +16,21 @@ import java.util.List;
 
 public class UserDAO {
 
+    /**
+     * Initializes the database schema.
+     * Can be called to ensure tables exist.
+     */
     public void init() {
         Database.init();
     }
 
-    // save a new user and assign the generated ID back
+    /**
+     * Saves a new user to the database and assigns the generated userId.
+     * Automatically detects if the user is an Admin and sets the role accordingly.
+     * 
+     * @param user User or Admin object to create
+     * @throws RuntimeException If database operation fails
+     */
     public void createUser(User user) {
         String sql = "INSERT INTO `User`(username,email,password,role,createdAt) VALUES(?,?,?,?,?)";
         String role = (user instanceof Admin) ? "ADMIN" : "LISTENER";
@@ -43,7 +55,14 @@ public class UserDAO {
         }
     }
 
-    // find a user by email — used during login
+    /**
+     * Finds a user by email address (case-insensitive).
+     * Returns an Admin object if the user has ADMIN role, otherwise returns User.
+     * 
+     * @param email Email address to search for
+     * @return User or Admin object, or null if not found
+     * @throws RuntimeException If database operation fails
+     */
     public User getUserByEmail(String email) {
         String sql = "SELECT userId,username,email,password,role,createdAt FROM `User` WHERE LOWER(email)=LOWER(?) LIMIT 1";
         try (Connection conn = Database.getConnection();
@@ -58,7 +77,14 @@ public class UserDAO {
         return null;
     }
 
-    // find a user by ID
+    /**
+     * Finds a user by their unique ID.
+     * Returns an Admin object if the user has ADMIN role, otherwise returns User.
+     * 
+     * @param userId Unique user identifier
+     * @return User or Admin object, or null if not found
+     * @throws RuntimeException If database operation fails
+     */
     public User getUserById(int userId) {
         String sql = "SELECT userId,username,email,password,role,createdAt FROM `User` WHERE userId=? LIMIT 1";
         try (Connection conn = Database.getConnection();
@@ -73,7 +99,13 @@ public class UserDAO {
         return null;
     }
 
-    // returns true if email is already registered
+    /**
+     * Checks if an email address is already registered (case-insensitive).
+     * 
+     * @param email Email address to check
+     * @return true if email exists, false otherwise
+     * @throws RuntimeException If database operation fails
+     */
     public boolean emailExists(String email) {
         String sql = "SELECT 1 FROM `User` WHERE LOWER(email)=LOWER(?) LIMIT 1";
         try (Connection conn = Database.getConnection();
@@ -87,6 +119,13 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Checks if a username is already taken (case-insensitive).
+     * 
+     * @param username Username to check
+     * @return true if username exists, false otherwise
+     * @throws RuntimeException If database operation fails
+     */
     public boolean usernameExists(String username) {
         String sql = "SELECT 1 FROM `User` WHERE LOWER(username)=LOWER(?) LIMIT 1";
         try (Connection conn = Database.getConnection();
@@ -100,6 +139,14 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Checks if an email is taken by a different user (used for profile updates).
+     * 
+     * @param userId User ID to exclude from check
+     * @param email  Email address to check
+     * @return true if email exists for another user, false otherwise
+     * @throws RuntimeException If database operation fails
+     */
     public boolean emailExistsForOther(int userId, String email) {
         String sql = "SELECT 1 FROM `User` WHERE LOWER(email)=LOWER(?) AND userId<>? LIMIT 1";
         try (Connection conn = Database.getConnection();
@@ -114,6 +161,14 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Checks if a username is taken by a different user (used for profile updates).
+     * 
+     * @param userId   User ID to exclude from check
+     * @param username Username to check
+     * @return true if username exists for another user, false otherwise
+     * @throws RuntimeException If database operation fails
+     */
     public boolean usernameExistsForOther(int userId, String username) {
         String sql = "SELECT 1 FROM `User` WHERE LOWER(username)=LOWER(?) AND userId<>? LIMIT 1";
         try (Connection conn = Database.getConnection();
@@ -128,7 +183,12 @@ public class UserDAO {
         }
     }
 
-    // update an existing user row
+    /**
+     * Updates an existing user's information in the database.
+     * 
+     * @param user User object with updated information
+     * @throws RuntimeException If database operation fails
+     */
     public void updateUser(User user) {
         String sql = "UPDATE `User` SET username=?, email=?, password=?, role=?, createdAt=? WHERE userId=?";
         String role = (user instanceof Admin) ? "ADMIN" : "LISTENER";
@@ -146,7 +206,14 @@ public class UserDAO {
         }
     }
 
-    // convert result row to User or Admin object
+    /**
+     * Converts a database result row to a User or Admin object.
+     * Automatically creates an Admin instance if role is "ADMIN".
+     * 
+     * @param rs ResultSet positioned at a user row
+     * @return User or Admin object
+     * @throws SQLException If column access fails
+     */
     private User fromRow(ResultSet rs) throws SQLException {
         int id = rs.getInt("userId");
         String username = rs.getString("username");
@@ -161,6 +228,12 @@ public class UserDAO {
         return new User(id, username, email, password, date);
     }
 
+    /**
+     * Retrieves all users from the database, ordered by userId.
+     * 
+     * @return List of all User and Admin objects
+     * @throws RuntimeException If database operation fails
+     */
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
         String sql = "SELECT userId,username,email,password,role,createdAt FROM `User` ORDER BY userId";
@@ -174,6 +247,13 @@ public class UserDAO {
         return users;
     }
 
+    /**
+     * Deletes a user from the database by their userId.
+     * Cascade delete will remove associated library entries and statistics.
+     * 
+     * @param userId ID of the user to delete
+     * @throws RuntimeException If database operation fails
+     */
     public void deleteUser(int userId) {
         String sql = "DELETE FROM `User` WHERE userId=?";
         try (Connection conn = Database.getConnection();

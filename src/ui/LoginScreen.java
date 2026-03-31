@@ -1,7 +1,8 @@
-// LoginScreen.java
-// First screen the user sees. Collects email and password.
-// Routes to HomeScreen for regular users or AdminScreen for admins.
-
+/**
+ * Generic login screen with email/password authentication.
+ * Supports both regular user and admin login via checkbox toggle.
+ * Features split-panel layout with branding on the left and form on the right.
+ */
 package ui;
 
 import exception.AuthException;
@@ -19,6 +20,11 @@ public class LoginScreen {
 
     private final AuthService authService = new AuthService();
 
+    /**
+     * Creates and returns the login scene.
+     * 
+     * @return Configured Scene object
+     */
     public Scene getScene() {
 
         // left panel — branding
@@ -146,6 +152,9 @@ public class LoginScreen {
         return new Scene(root, 1100, 720);
     }
 
+    /**
+     * Creates a decorative stat block for the branding panel.
+     */
     private VBox statBlock(String title, String sub) {
         VBox box = new VBox(4);
         box.setAlignment(Pos.CENTER);

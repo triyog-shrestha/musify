@@ -1,7 +1,8 @@
-// RegisterScreen.java
-// Collects username, email and password for a new account.
-// Routes to HomeScreen on successful registration.
-
+/**
+ * User registration screen for creating new accounts.
+ * Collects username, email, and password with validation.
+ * Features split-panel layout with branding and form.
+ */
 package ui;
 
 import exception.AuthException;
@@ -17,6 +18,11 @@ public class RegisterScreen {
 
     private final AuthService authService = new AuthService();
 
+    /**
+     * Creates and returns the registration scene.
+     * 
+     * @return Configured Scene object
+     */
     public Scene getScene() {
 
         // left branding panel

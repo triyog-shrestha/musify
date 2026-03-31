@@ -1,6 +1,8 @@
-// UserLoginScreen.java
-// Login screen specifically for regular users
-
+/**
+ * Login screen specifically for regular users (listeners).
+ * Prevents admin accounts from logging in through this portal.
+ * Features back button to role selection and link to user registration.
+ */
 package ui;
 
 import exception.AuthException;
@@ -18,6 +20,11 @@ public class UserLoginScreen {
 
     private final AuthService authService = new AuthService();
 
+    /**
+     * Creates and returns the user login scene.
+     * 
+     * @return Configured Scene object
+     */
     public Scene getScene() {
 
         // left panel — branding
@@ -145,6 +152,9 @@ public class UserLoginScreen {
         return new Scene(root, 1100, 720);
     }
 
+    /**
+     * Creates a decorative stat block for the branding panel.
+     */
     private VBox statBlock(String title, String sub) {
         VBox box = new VBox(4);
         box.setAlignment(Pos.CENTER);

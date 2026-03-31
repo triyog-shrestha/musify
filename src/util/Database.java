@@ -1,3 +1,10 @@
+/**
+ * MySQL database connection manager and schema initialization.
+ * Handles automatic database creation, table initialization, and connection pooling.
+ * 
+ * The database uses a normalized schema with separate tables for artists, genres,
+ * albums, and songs, connected via junction tables for many-to-many relationships.
+ */
 package util;
 
 import java.sql.*;
@@ -8,9 +15,17 @@ public class Database {
     private static final String DEFAULT_USER = "root";
     private static final String DEFAULT_PASSWORD = "2008";
 
-    // Set to false to preserve data across app restarts
+    // Controls whether to drop all tables on startup (false = preserve data across restarts)
     private static final boolean RESET_ON_STARTUP = false;
 
+    /**
+     * Gets a connection to the Musify database.
+     * Connection parameters can be overridden via environment variables:
+     * MUSIFY_DB_URL, MUSIFY_DB_USER, MUSIFY_DB_PASSWORD
+     * 
+     * @return Active database connection
+     * @throws SQLException If connection fails
+     */
     public static Connection getConnection() throws SQLException {
         String url = getEnv("MUSIFY_DB_URL", DEFAULT_URL);
         String user = getEnv("MUSIFY_DB_USER", DEFAULT_USER);
@@ -18,6 +33,13 @@ public class Database {
         return DriverManager.getConnection(url, user, password);
     }
 
+    /**
+     * Initializes the database schema.
+     * - Loads the MySQL JDBC driver
+     * - Creates the database if it doesn't exist
+     * - Optionally drops all tables if RESET_ON_STARTUP is true
+     * - Creates all required tables with proper relationships
+     */
     public static void init() {
         String rootUrl = getEnv("MUSIFY_DB_URL", DEFAULT_URL);
         String user = getEnv("MUSIFY_DB_USER", DEFAULT_USER);
@@ -36,6 +58,10 @@ public class Database {
         createTables();
     }
 
+    /**
+     * Ensures the Musify database exists in MySQL.
+     * Creates it if missing, using the database name from the JDBC URL.
+     */
     private static void ensureDatabaseExists(String jdbcUrl, String user, String password) {
         ParsedUrl p = parseUrl(jdbcUrl);
         if (p.dbName.isEmpty()) return;
@@ -50,6 +76,10 @@ public class Database {
         }
     }
 
+    /**
+     * Drops all tables in the correct order to avoid foreign key constraint violations.
+     * Junction tables are dropped first, then content tables, then primary entity tables.
+     */
     private static void dropAllTables() {
         String[] tables = {
                 // Junction tables first (foreign keys)
@@ -80,6 +110,14 @@ public class Database {
         }
     }
 
+    /**
+     * Creates all database tables if they don't exist.
+     * Tables are created in dependency order:
+     * 1. Primary entities (User, Artist, Genre, Album)
+     * 2. Content tables (Song, Recommendation)  
+     * 3. User data tables (Library, Statistics)
+     * 4. Junction tables (Song_Artist, Song_Genre, Recommendation_Artist, Recommendation_Genre)
+     */
     private static void createTables() {
         // 1. PRIMARY ENTITIES
         String userSql = """
@@ -227,11 +265,18 @@ public class Database {
         }
     }
 
+    /**
+     * Gets an environment variable or returns a fallback value if not set.
+     */
     private static String getEnv(String key, String fallback) {
         String value = System.getenv(key);
         return (value == null || value.isBlank()) ? fallback : value;
     }
 
+    /**
+     * Parses a JDBC URL to extract the base URL and database name.
+     * Used to connect without a database to create the database itself.
+     */
     private static ParsedUrl parseUrl(String jdbcUrl) {
         int slash = jdbcUrl.lastIndexOf('/');
         if (slash < 0 || slash + 1 >= jdbcUrl.length()) {

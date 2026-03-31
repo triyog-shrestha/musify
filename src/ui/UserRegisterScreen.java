@@ -1,6 +1,8 @@
-// UserRegisterScreen.java
-// Registration screen for regular users
-
+/**
+ * Registration screen for creating new regular user accounts.
+ * Routes back to user login after successful registration.
+ * Features back button to role selection.
+ */
 package ui;
 
 import exception.AuthException;
@@ -16,6 +18,11 @@ public class UserRegisterScreen {
 
     private final AuthService authService = new AuthService();
 
+    /**
+     * Creates and returns the user registration scene.
+     * 
+     * @return Configured Scene object
+     */
     public Scene getScene() {
 
         // left branding panel

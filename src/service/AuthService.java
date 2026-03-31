@@ -1,7 +1,13 @@
-// AuthService.java
-// Handles login, registration and password changes.
-// Never touches files directly — always goes through UserDAO.
-
+/**
+ * Authentication and authorization service.
+ * Handles user registration, login, password management, and profile updates.
+ * 
+ * Security Features:
+ * - Passwords are hashed with SHA-256 before storage
+ * - Legacy plain text passwords are automatically upgraded on login
+ * - Email and username uniqueness is enforced
+ * - Password minimum length: 8 characters
+ */
 package service;
 
 import dao.UserDAO;
@@ -17,7 +23,21 @@ public class AuthService {
 
     private final UserDAO userDAO = new UserDAO();
 
-    // register a new user
+    /**
+     * Registers a new user account with validation.
+     * 
+     * Validations:
+     * - Username, email, and password cannot be empty
+     * - Email must contain @ symbol
+     * - Password must be at least 8 characters
+     * - Username and email must be unique
+     * 
+     * @param username Desired username
+     * @param email    Email address (must be unique)
+     * @param password Plain text password (will be hashed)
+     * @return Newly created User object with assigned userId
+     * @throws AuthException If validation fails or user already exists
+     */
     public User register(String username, String email,
                          String password) throws AuthException {
         if (username == null || username.isBlank())
@@ -46,7 +66,14 @@ public class AuthService {
         }
     }
 
-    // login an existing user
+    /**
+     * Authenticates a user with email and password.
+     * 
+     * @param email    User's email address
+     * @param password Plain text password
+     * @return User or Admin object if authentication succeeds
+     * @throws AuthException If credentials are invalid or account doesn't exist
+     */
     public User login(String email, String password) throws AuthException {
         if (email == null || email.isBlank() ||
                 password == null || password.isBlank())
@@ -67,7 +94,14 @@ public class AuthService {
         }
     }
 
-    // change password — verifies old password first
+    /**
+     * Changes a user's password after verifying the current password.
+     * 
+     * @param userId      User whose password to change
+     * @param oldPassword Current password for verification
+     * @param newPassword New password (min 8 characters)
+     * @throws AuthException If old password is wrong or new password is invalid
+     */
     public void changePassword(int userId, String oldPassword,
                                String newPassword) throws AuthException {
         User user;
@@ -95,6 +129,15 @@ public class AuthService {
         System.out.println("Password updated successfully.");
     }
 
+    /**
+     * Updates a user's profile information (username and email).
+     * Validates that new username/email are not taken by other users.
+     * 
+     * @param user     User object to update
+     * @param username New username
+     * @param email    New email
+     * @throws AuthException If username/email is already taken
+     */
     public void updateProfile(User user, String username, String email) throws AuthException {
         if (username == null || username.isBlank())
             throw new AuthException("Username cannot be empty.");
@@ -120,6 +163,10 @@ public class AuthService {
         }
     }
 
+    /**
+     * Verifies if a plain text password matches the stored hashed password.
+     * Automatically upgrades legacy plain text passwords to hashed format.
+     */
     private boolean passwordMatches(User user, String plainPassword) {
         String stored = user.getPassword();
         String hashedInput = hashPassword(plainPassword);
@@ -139,16 +186,30 @@ public class AuthService {
         return false;
     }
 
+    /**
+     * Wraps database exceptions in a user-friendly AuthException.
+     */
     private AuthException dbError(RuntimeException e) {
         return new AuthException("Database is unavailable. Check MySQL connection and credentials.");
     }
 
-    // returns true if user is an Admin
+    /**
+     * Checks if a user has admin privileges.
+     * 
+     * @param user User to check
+     * @return true if user is an Admin instance
+     */
     public boolean isAdmin(User user) {
         return user instanceof Admin;
     }
 
-    // hashes a plain text password using SHA-256
+    /**
+     * Hashes a plain text password using SHA-256.
+     * 
+     * @param plain Plain text password
+     * @return Hexadecimal hash string
+     * @throws RuntimeException If SHA-256 algorithm is not available
+     */
     public String hashPassword(String plain) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
