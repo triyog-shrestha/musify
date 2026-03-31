@@ -124,7 +124,7 @@ The application uses a normalized MySQL schema with the following tables:
 
 ### Prerequisites
 - Java 11 or higher
-- Maven
+- JavaFX SDK
 - MySQL 8.0 or higher
 
 ### MySQL Setup
