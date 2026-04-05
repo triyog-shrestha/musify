@@ -103,8 +103,16 @@ public class AdminHomeScreen {
                 del.setStyle(Theme.BTN_DANGER);
                 del.setOnAction(e -> {
                     User u = getTableView().getItems().get(getIndex());
-                    adminService.deleteUser(u.getUserId());
-                    getTableView().getItems().remove(u);
+                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                    confirm.setTitle("Confirm Delete");
+                    confirm.setHeaderText("Delete User");
+                    confirm.setContentText("Are you sure you want to delete \"" + u.getUsername() + "\"?");
+                    confirm.showAndWait().ifPresent(response -> {
+                        if (response == ButtonType.OK) {
+                            adminService.deleteUser(u.getUserId());
+                            getTableView().getItems().remove(u);
+                        }
+                    });
                 });
             }
             @Override

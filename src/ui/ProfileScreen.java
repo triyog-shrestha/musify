@@ -61,9 +61,20 @@ public class ProfileScreen {
         nameDisplay.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 18px; -fx-font-weight: bold;");
         Label emailDisplay = new Label(user.getEmail());
         emailDisplay.setStyle(Theme.LABEL_SUBTITLE);
+        
+        // Show role label for admins
+        boolean isAdmin = user instanceof model.Admin;
+        if (isAdmin) {
+            Label roleDisplay = new Label("Administrator");
+            roleDisplay.setStyle("-fx-text-fill: " + Theme.ACCENT + "; -fx-font-size: 12px; -fx-font-weight: bold;");
+            userInfo.getChildren().addAll(nameDisplay, emailDisplay, roleDisplay);
+        } else {
+            userInfo.getChildren().addAll(nameDisplay, emailDisplay);
+        }
+        
         Label joinedDisplay = new Label("Member since " + user.getCreatedAt().toLocalDate().toString());
         joinedDisplay.setStyle(Theme.LABEL_SUBTITLE);
-        userInfo.getChildren().addAll(nameDisplay, emailDisplay, joinedDisplay);
+        userInfo.getChildren().add(joinedDisplay);
         avatarRow.getChildren().addAll(avatar, userInfo);
         infoCard.getChildren().add(avatarRow);
 

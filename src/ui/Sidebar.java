@@ -137,11 +137,7 @@ public class Sidebar extends VBox {
                 }
             }
             case "Profile" -> {
-                if (isAdmin) {
-                    AppContext.primaryStage.setScene(new AdminProfileScreen(user).getScene());
-                } else {
-                    AppContext.primaryStage.setScene(new ProfileScreen(user).getScene());
-                }
+                AppContext.primaryStage.setScene(new ProfileScreen(user).getScene());
             }
         }
     }

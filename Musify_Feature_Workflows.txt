@@ -1,0 +1,585 @@
+================================================================================
+                    MUSIFY - FEATURE WORKFLOW DOCUMENTATION
+                    How Classes Interact for Each Feature
+================================================================================
+
+This document explains the class-by-class workflow for every major feature
+in the Musify application. Understanding these workflows will help you
+answer any viva question about how the system works.
+
+================================================================================
+                         ARCHITECTURE OVERVIEW
+================================================================================
+
+The app follows a 3-tier architecture:
+
+    UI Layer (Screens)  -->  Service Layer  -->  DAO Layer  -->  MySQL Database
+         |                        |                  |
+    User interaction         Business logic      SQL queries
+    JavaFX components        Validation          CRUD operations
+
+Model classes (Song, User, Recommendation, etc.) are used across all layers
+as data transfer objects.
+
+================================================================================
+                    1. APPLICATION STARTUP WORKFLOW
+================================================================================
+
+Classes Involved:
+  Main.java → Database.java → UserDAO.java → RoleSelectionScreen.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Main.main() is called by JVM                                            │
+│    └── Calls launch(args) which triggers JavaFX Application lifecycle      │
+│                                                                             │
+│ 2. Main.start(Stage stage) is called by JavaFX                             │
+│    └── Stores stage reference in Main.primaryStage AND AppContext          │
+│        (AppContext holds global state for navigation)                       │
+│                                                                             │
+│ 3. Database.init() is called                                                │
+│    └── Reads config.properties for MySQL credentials                        │
+│    └── Creates connection pool                                              │
+│    └── Creates all tables if they don't exist (Song, User, Library, etc.)  │
+│                                                                             │
+│ 4. new UserDAO().init() is called                                           │
+│    └── Creates User and Admin tables if missing                             │
+│    └── Inserts default admin account if no admins exist                     │
+│                                                                             │
+│ 5. RoleSelectionScreen.getScene() displays the first screen                 │
+│    └── User chooses "Listener" or "Administrator"                           │
+│    └── Navigates to UserLoginScreen or AdminLoginScreen                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    2. USER REGISTRATION WORKFLOW
+================================================================================
+
+Classes Involved:
+  UserRegisterScreen.java → AuthService.java → UserDAO.java → User.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. UserRegisterScreen displays registration form                            │
+│    └── Fields: username, email, password                                    │
+│                                                                             │
+│ 2. User clicks "Create Account" button                                      │
+│    └── Button action calls AuthService.register(username, email, password) │
+│                                                                             │
+│ 3. AuthService.register() validates input:                                  │
+│    └── Checks if username/email/password are not blank                      │
+│    └── Validates email contains "@"                                         │
+│    └── Checks password is at least 8 characters                             │
+│    └── If validation fails → throws AuthException with error message        │
+│                                                                             │
+│ 4. AuthService checks username/email uniqueness:                            │
+│    └── Calls UserDAO.usernameExists(username)                               │
+│    └── Calls UserDAO.emailExists(email)                                     │
+│    └── If either exists → throws AuthException                              │
+│                                                                             │
+│ 5. AuthService hashes the password:                                         │
+│    └── Uses SHA-256 algorithm: hashPassword(password)                       │
+│    └── Converts to hex string for storage                                   │
+│                                                                             │
+│ 6. AuthService creates User object and saves:                               │
+│    └── new User(username, email, hashedPassword)                            │
+│    └── Calls UserDAO.createUser(user)                                       │
+│    └── Returns the User object with assigned userId                         │
+│                                                                             │
+│ 7. UserRegisterScreen handles the result:                                   │
+│    └── On success: Navigates to HomeScreen with the User object             │
+│    └── On AuthException: Displays error message in red label                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    3. USER LOGIN WORKFLOW
+================================================================================
+
+Classes Involved:
+  UserLoginScreen.java → AuthService.java → UserDAO.java → User.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. UserLoginScreen displays login form                                      │
+│    └── Fields: email, password                                              │
+│                                                                             │
+│ 2. User clicks "Log In" button                                              │
+│    └── Button action calls AuthService.login(email, password)               │
+│                                                                             │
+│ 3. AuthService.login() validates input:                                     │
+│    └── Checks if email and password are not blank                           │
+│    └── If blank → throws AuthException                                      │
+│                                                                             │
+│ 4. AuthService fetches user from database:                                  │
+│    └── Calls UserDAO.getUserByEmail(email)                                  │
+│    └── If user is null → throws AuthException("No account found...")        │
+│                                                                             │
+│ 5. AuthService verifies password:                                           │
+│    └── Calls passwordMatches(user, password)                                │
+│    └── Hashes input password and compares with stored hash                  │
+│    └── Also handles legacy plain-text passwords (auto-upgrades them)        │
+│    └── If mismatch → throws AuthException("Incorrect password")             │
+│                                                                             │
+│ 6. UserLoginScreen handles the result:                                      │
+│    └── Checks if returned user is Admin (instanceof Admin)                  │
+│    └── If Admin → Shows error "Admins must log in through Admin panel"      │
+│    └── If regular User → Navigates to HomeScreen                            │
+│    └── On AuthException → Displays error message                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    4. ADMIN LOGIN WORKFLOW
+================================================================================
+
+Classes Involved:
+  AdminLoginScreen.java → AuthService.java → UserDAO.java → Admin.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Same as User Login, but:                                                    │
+│                                                                             │
+│ 1. AdminLoginScreen calls AuthService.login(email, password)                │
+│                                                                             │
+│ 2. AuthService returns either User or Admin object                          │
+│    └── UserDAO.getUserByEmail() checks both User and Admin tables           │
+│    └── Returns Admin object if found in Admin table                         │
+│                                                                             │
+│ 3. AdminLoginScreen checks the result:                                      │
+│    └── Checks authService.isAdmin(user) → returns (user instanceof Admin)   │
+│    └── If NOT Admin → Shows error "This login is for administrators only"   │
+│    └── If Admin → Navigates to AdminHomeScreen                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    5. SONG IMPORT (CSV) WORKFLOW
+================================================================================
+
+Classes Involved:
+  LibraryScreen.java → SongService.java → Importer.java → 
+  MoodCalculator.java → SongDAO.java → Song.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. User clicks "Import CSV" button in LibraryScreen                         │
+│    └── Opens FileChooser dialog for *.csv files                             │
+│                                                                             │
+│ 2. User selects an Exportify CSV file                                       │
+│    └── File must be raw Exportify format (24 columns with audio features)   │
+│                                                                             │
+│ 3. LibraryScreen calls SongService.importFromCSV(filePath, userId)          │
+│                                                                             │
+│ 4. SongService calls Importer.importFromCSV(filePath)                       │
+│    └── Opens file with BufferedReader                                       │
+│    └── Reads header line (skips it)                                         │
+│    └── For each data row, calls parseRawRow(line)                           │
+│                                                                             │
+│ 5. Importer.parseRawRow() extracts data from CSV columns:                   │
+│    └── Column 0: Spotify URI → converted to full URL                        │
+│    └── Column 1: Track name                                                 │
+│    └── Column 2: Album name                                                 │
+│    └── Column 3: Artists (semicolon-separated → pipe-separated)             │
+│    └── Column 5: Duration (ms) → converted to mm:ss                         │
+│    └── Column 10: Genres                                                    │
+│    └── Columns 12,13,18,21,22,16: Audio features for mood                   │
+│                                                                             │
+│ 6. MoodCalculator.fromAudioFeatures() calculates mood:                      │
+│    └── Takes: danceability, energy, acousticness, valence, tempo, mode      │
+│    └── Uses weighted formula to determine mood category                     │
+│    └── Returns: ENERGETIC, HAPPY, FOCUSED, RELAXED, or MELANCHOLIC          │
+│                                                                             │
+│ 7. Importer creates Song objects and returns list                           │
+│                                                                             │
+│ 8. SongService calls SongDAO.insertAll(songs, userId)                       │
+│    └── Inserts each song into Song table                                    │
+│    └── Creates entries in Artist, Album, Genre tables (if new)              │
+│    └── Links song to user's Library table with playCount=0                  │
+│                                                                             │
+│ 9. LibraryScreen refreshes the table to show imported songs                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    6. LIBRARY VIEW & SEARCH WORKFLOW
+================================================================================
+
+Classes Involved:
+  LibraryScreen.java → SongService.java → SongDAO.java → Song.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ VIEWING LIBRARY:                                                            │
+│                                                                             │
+│ 1. LibraryScreen is opened (user clicks "Library" in sidebar)              │
+│    └── Sidebar calls AppContext.primaryStage.setScene(libraryScreen)        │
+│                                                                             │
+│ 2. LibraryScreen constructor:                                               │
+│    └── Creates SongService(userId) for current user                         │
+│    └── Calls songService.getAllSongs() to fetch library                     │
+│                                                                             │
+│ 3. SongService.getAllSongs():                                               │
+│    └── Calls SongDAO.getAllForUser(userId)                                  │
+│                                                                             │
+│ 4. SongDAO.getAllForUser() executes SQL:                                    │
+│    └── JOINs Song, Library, Album, Artist, Genre tables                     │
+│    └── Filters by userId                                                    │
+│    └── Returns List<Song> with all metadata                                 │
+│                                                                             │
+│ 5. LibraryScreen displays songs in TableView                                │
+│    └── Columns: Track, Album, Artists, Length, Genres, Mood, Plays, Actions │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ SEARCHING:                                                                  │
+│                                                                             │
+│ 1. User types in search TextField                                           │
+│    └── KeyReleased event triggers search                                    │
+│                                                                             │
+│ 2. LibraryScreen calls songService.search(query)                            │
+│                                                                             │
+│ 3. SongService.search() calls SongDAO.search(query, userId)                 │
+│    └── Executes SQL with LIKE '%query%' on song name                        │
+│    └── Returns matching songs                                               │
+│                                                                             │
+│ 4. LibraryScreen updates TableView with filtered results                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    7. PLAY COUNT UPDATE WORKFLOW
+================================================================================
+
+Classes Involved:
+  LibraryScreen.java → SongService.java → SongDAO.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. User edits play count in TableView (playCount column is editable)        │
+│    └── User double-clicks cell, enters new number                           │
+│                                                                             │
+│ 2. TableColumn's onEditCommit handler is triggered                          │
+│    └── Gets the new value from event.getNewValue()                          │
+│                                                                             │
+│ 3. LibraryScreen calls songService.setPlayCount(songId, userId, count)      │
+│                                                                             │
+│ 4. SongService.setPlayCount() calls SongDAO.updatePlayCount()               │
+│    └── Executes: UPDATE Library SET playCount=? WHERE songId=? AND userId=? │
+│                                                                             │
+│ 5. The play count is now persisted in the database                          │
+│    └── This affects statistics calculations                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    8. STATISTICS CALCULATION WORKFLOW
+================================================================================
+
+Classes Involved:
+  StatsScreen.java → StatsService.java → SongDAO.java → Database.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. User clicks "Stats" in sidebar → StatsScreen is displayed               │
+│                                                                             │
+│ 2. StatsScreen creates StatsService(userId)                                 │
+│                                                                             │
+│ 3. StatsScreen calls various StatsService methods:                          │
+│                                                                             │
+│    a. statsService.getTopArtists()                                          │
+│       └── SQL: Groups songs by artist, sums play counts                     │
+│       └── Returns List<Entry<artist, totalPlays>> sorted desc               │
+│                                                                             │
+│    b. statsService.getTopAlbums()                                           │
+│       └── SQL: Groups songs by album, sums play counts                      │
+│       └── Returns List<Entry<album, totalPlays>> sorted desc                │
+│                                                                             │
+│    c. statsService.getTopSongs()                                            │
+│       └── SQL: Selects songs ordered by playCount DESC                      │
+│       └── Returns List<Song> (top played songs)                             │
+│                                                                             │
+│    d. statsService.getTopGenres()                                           │
+│       └── SQL: Groups songs by genre, sums play counts                      │
+│       └── Multi-genre songs contribute to EACH genre                        │
+│       └── Returns List<Entry<genre, totalPlays>> sorted desc                │
+│                                                                             │
+│    e. statsService.getTopMood()                                             │
+│       └── SQL: Groups songs by mood, finds highest total plays              │
+│       └── Returns mood name (e.g., "ENERGETIC")                             │
+│                                                                             │
+│    f. statsService.getTotalPlays()                                          │
+│       └── SQL: SUM(playCount) from Library for user                         │
+│                                                                             │
+│    g. statsService.getTotalMinutes()                                        │
+│       └── SQL: SUM(trackLength * playCount) / 60                            │
+│       └── Converts to total listening time in minutes                       │
+│                                                                             │
+│ 4. StatsScreen displays all stats in cards/charts                           │
+│    └── Uses Theme colors and styling                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    9. RECOMMENDATIONS WORKFLOW
+================================================================================
+
+Classes Involved:
+  RecsScreen.java → RecommendationService.java → StatsService.java → 
+  RecommendationDAO.java → SongDAO.java → Recommendation.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. User clicks "Recommendations" in sidebar → RecsScreen displayed          │
+│                                                                             │
+│ 2. RecsScreen creates RecommendationService(userId)                         │
+│                                                                             │
+│ 3. RecommendationService checks if user has listening history:              │
+│    └── Calls hasListeningHistory()                                          │
+│    └── Checks if ANY song has playCount > 0                                 │
+│    └── If no history → shows "Import songs and add play counts first"       │
+│                                                                             │
+│ 4. User selects recommendation strategy:                                    │
+│                                                                             │
+│    a. "By Genre" button → recommendationService.byTopGenre()                │
+│       └── Calls statsService.getTopGenres() to find user's top genre        │
+│       └── Filters recommendations matching that genre                       │
+│       └── Excludes songs already in user's library (by Spotify URL)         │
+│                                                                             │
+│    b. "By Mood" button → recommendationService.byTopMood()                  │
+│       └── Calls statsService.getAverageMoodScore()                          │
+│       └── Scores each recommendation by mood distance from user's average   │
+│       └── Returns closest mood matches (within 0.2 distance)                │
+│                                                                             │
+│    c. "Personalized" button → recommendationService.getPersonalized()       │
+│       └── Combines genre matching (up to 3 top genres)                      │
+│       └── Plus mood similarity scoring                                      │
+│       └── Sorts by total relevance score                                    │
+│                                                                             │
+│ 5. RecommendationService excludes library songs:                            │
+│    └── Calls getLibraryLinks() to get all Spotify URLs user owns            │
+│    └── Filters out any recommendations with matching URLs                   │
+│                                                                             │
+│ 6. RecsScreen displays recommendations in TableView                         │
+│    └── User can click "Add to Library" to save a recommendation             │
+│    └── Calls songService.addFromRecommendation(rec)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    10. ADMIN USER MANAGEMENT WORKFLOW
+================================================================================
+
+Classes Involved:
+  AdminHomeScreen.java → AdminService.java → UserDAO.java → User.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Admin logs in → AdminHomeScreen displayed                                │
+│                                                                             │
+│ 2. AdminHomeScreen calls adminService.getAllUsers()                         │
+│    └── AdminService calls UserDAO.getAllUsers()                             │
+│    └── Returns List<User> of all registered accounts (including admins)     │
+│                                                                             │
+│ 3. AdminHomeScreen displays users in TableView                              │
+│    └── Columns: ID, Username, Email, Role, Actions                          │
+│                                                                             │
+│ 4. DELETE USER:                                                             │
+│    a. Admin clicks "Delete" button on a user row                            │
+│    b. Confirmation dialog appears: "Are you sure you want to delete X?"     │
+│    c. If confirmed → calls adminService.deleteUser(userId)                  │
+│    d. AdminService calls UserDAO.deleteUser(userId)                         │
+│    e. SQL: DELETE FROM User WHERE userId=?                                  │
+│       └── Also deletes from Library (cascade) and Admin table if admin      │
+│    f. TableView is refreshed                                                │
+│                                                                             │
+│ 5. SEARCH USERS:                                                            │
+│    a. Admin types in search field                                           │
+│    b. Filters TableView by username match                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    11. ADMIN RECOMMENDATION IMPORT WORKFLOW
+================================================================================
+
+Classes Involved:
+  AdminRecsScreen.java → RecommendationService.java → Importer.java →
+  RecommendationDAO.java → Recommendation.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Admin clicks "Import CSV" in AdminRecsScreen                             │
+│    └── FileChooser opens for *.csv                                          │
+│                                                                             │
+│ 2. Admin selects Exportify CSV file with songs to recommend                 │
+│                                                                             │
+│ 3. AdminRecsScreen calls recommendationService.importFromCSV(filePath)      │
+│                                                                             │
+│ 4. RecommendationService:                                                   │
+│    └── Calls Importer.importFromCSV(filePath) to parse songs                │
+│    └── Converts each Song to Recommendation object                          │
+│    └── Calls RecommendationDAO.insertBatch(recommendations)                 │
+│                                                                             │
+│ 5. RecommendationDAO.insertBatch():                                         │
+│    └── Checks for duplicates (by Spotify URL)                               │
+│    └── Skips existing songs                                                 │
+│    └── Inserts new recommendations into Recommendation table                │
+│    └── Returns count of newly inserted records                              │
+│                                                                             │
+│ 6. AdminRecsScreen refreshes table and shows success message                │
+│                                                                             │
+│ NOTE: These recommendations become the "pool" from which all users          │
+│       receive personalized recommendations based on their listening habits. │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    12. PROFILE UPDATE WORKFLOW
+================================================================================
+
+Classes Involved:
+  ProfileScreen.java → AuthService.java → UserDAO.java → User.java
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ UPDATE USERNAME/EMAIL:                                                      │
+│                                                                             │
+│ 1. User edits username or email fields in ProfileScreen                     │
+│                                                                             │
+│ 2. User clicks "Save Changes" button                                        │
+│    └── Calls authService.updateProfile(user, newUsername, newEmail)         │
+│                                                                             │
+│ 3. AuthService.updateProfile():                                             │
+│    └── Validates inputs (not blank, email has @)                            │
+│    └── Checks if new username is taken by ANOTHER user                      │
+│    └── Checks if new email is taken by ANOTHER user                         │
+│    └── Updates User object fields                                           │
+│    └── Calls UserDAO.updateUser(user)                                       │
+│                                                                             │
+│ 4. ProfileScreen shows success or error message                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ CHANGE PASSWORD:                                                            │
+│                                                                             │
+│ 1. User enters current password, new password, confirm password             │
+│                                                                             │
+│ 2. User clicks "Change Password" button                                     │
+│    └── Checks new password == confirm password                              │
+│    └── Calls authService.changePassword(userId, oldPassword, newPassword)   │
+│                                                                             │
+│ 3. AuthService.changePassword():                                            │
+│    └── Fetches user from database                                           │
+│    └── Verifies old password matches (using hash comparison)                │
+│    └── Validates new password (not blank, min 8 chars)                      │
+│    └── Hashes new password                                                  │
+│    └── Updates user.password and saves via UserDAO                          │
+│                                                                             │
+│ 4. ProfileScreen shows success or error message                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    13. NAVIGATION WORKFLOW (SIDEBAR)
+================================================================================
+
+Classes Involved:
+  Sidebar.java → AppContext.java → All Screen classes
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Every screen uses Sidebar component                                      │
+│    └── Sidebar is created with current User object                          │
+│    └── Displays different menu items based on user role (Admin vs User)     │
+│                                                                             │
+│ 2. USER SIDEBAR ITEMS:                                                      │
+│    └── Home       → new HomeScreen(user).getScene()                         │
+│    └── Library    → new LibraryScreen(user).getScene()                      │
+│    └── Stats      → new StatsScreen(user).getScene()                        │
+│    └── Recs       → new RecsScreen(user).getScene()                         │
+│    └── Profile    → new ProfileScreen(user).getScene()                      │
+│    └── Log Out    → new RoleSelectionScreen().getScene()                    │
+│                                                                             │
+│ 3. ADMIN SIDEBAR ITEMS:                                                     │
+│    └── Dashboard  → new AdminHomeScreen(admin).getScene()                   │
+│    └── Users      → new AdminHomeScreen(admin).getScene()                   │
+│    └── Recs       → new AdminRecsScreen(admin).getScene()                   │
+│    └── Stats      → new AdminStatsScreen(admin).getScene()                  │
+│    └── Profile    → new ProfileScreen(admin).getScene()                     │
+│    └── Log Out    → new RoleSelectionScreen().getScene()                    │
+│                                                                             │
+│ 4. Navigation happens via:                                                  │
+│    └── AppContext.primaryStage.setScene(newScene)                           │
+│    └── This replaces the entire window content                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    14. MOOD CALCULATION WORKFLOW
+================================================================================
+
+Classes Involved:
+  Importer.java → MoodCalculator.java → Mood.java (enum)
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. During CSV import, Importer extracts audio features from Exportify:      │
+│    └── Danceability (0.0 - 1.0): How danceable the track is                │
+│    └── Energy (0.0 - 1.0): Intensity and activity level                     │
+│    └── Acousticness (0.0 - 1.0): Likelihood of acoustic instruments         │
+│    └── Valence (0.0 - 1.0): Musical positiveness (happy vs sad)             │
+│    └── Tempo (BPM): Speed of the track                                      │
+│    └── Mode (0 or 1): Minor or Major key                                    │
+│                                                                             │
+│ 2. MoodCalculator.fromAudioFeatures() applies algorithm:                    │
+│                                                                             │
+│    score = valence×0.3 + energy×0.3 + danceability×0.2 + (1-acousticness)×0.1│
+│          + (tempo normalized to 0-1)×0.1                                    │
+│                                                                             │
+│    Then maps score to mood:                                                 │
+│    └── score > 0.7 AND energy > 0.7  → ENERGETIC                           │
+│    └── score > 0.6                    → HAPPY                               │
+│    └── energy < 0.5 AND valence < 0.4 → MELANCHOLIC                        │
+│    └── acousticness > 0.7             → RELAXED                             │
+│    └── Otherwise                       → FOCUSED                            │
+│                                                                             │
+│ 3. The calculated Mood enum value is stored with the Song                   │
+│    └── Used for statistics and recommendation matching                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    15. DATABASE CONNECTION WORKFLOW
+================================================================================
+
+Classes Involved:
+  Database.java → config.properties → MySQL Server
+
+Step-by-Step Flow:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Database.init() is called on app startup                                 │
+│                                                                             │
+│ 2. Reads config.properties file:                                            │
+│    └── db.url = jdbc:mysql://localhost:3306/musify                          │
+│    └── db.user = root                                                       │
+│    └── db.password = (your password)                                        │
+│                                                                             │
+│ 3. Creates connection pool using HikariCP (or basic pooling)                │
+│                                                                             │
+│ 4. All DAOs use Database.getConnection() to get connections                 │
+│    └── Returns Connection object from the pool                              │
+│    └── Must be closed after use (try-with-resources pattern)                │
+│                                                                             │
+│ 5. If connection fails:                                                     │
+│    └── AuthException is thrown with message about MySQL connection          │
+│    └── User sees "Database is unavailable. Check MySQL connection..."       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                         QUICK REFERENCE SUMMARY
+================================================================================
+
+FEATURE              | UI CLASS           | SERVICE CLASS      | DAO CLASS
+---------------------|--------------------|--------------------|-------------
+User Login           | UserLoginScreen    | AuthService        | UserDAO
+User Register        | UserRegisterScreen | AuthService        | UserDAO
+Admin Login          | AdminLoginScreen   | AuthService        | UserDAO
+Admin Register       | AdminRegisterScreen| AuthService        | UserDAO
+View Library         | LibraryScreen      | SongService        | SongDAO
+Import Songs         | LibraryScreen      | SongService        | SongDAO
+Search Songs         | LibraryScreen      | SongService        | SongDAO
+Update Play Count    | LibraryScreen      | SongService        | SongDAO
+View Statistics      | StatsScreen        | StatsService       | SongDAO
+Get Recommendations  | RecsScreen         | RecommendationSvc  | RecommendationDAO
+Manage Users (Admin) | AdminHomeScreen    | AdminService       | UserDAO
+Import Recs (Admin)  | AdminRecsScreen    | RecommendationSvc  | RecommendationDAO
+Update Profile       | ProfileScreen      | AuthService        | UserDAO
+Change Password      | ProfileScreen      | AuthService        | UserDAO
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================

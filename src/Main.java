@@ -26,13 +26,6 @@ public class Main extends Application {
      * This enables navigation between screens from anywhere in the application.
      */
     public static Stage primaryStage;
-
-    /**
-     * JavaFX application start method - called after the JavaFX runtime is initialized.
-     * Sets up the database, configures the main window, and displays the initial screen.
-     * 
-     * @param stage The primary stage provided by JavaFX runtime
-     */
     @Override
     public void start(Stage stage) {
         // Store stage reference for global access

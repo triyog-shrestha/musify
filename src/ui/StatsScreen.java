@@ -144,16 +144,6 @@ public class StatsScreen {
         return card;
     }
 
-    private VBox sectionCard(String heading) {
-        VBox card = new VBox(12);
-        card.setPadding(new Insets(24));
-        card.setStyle(Theme.CARD);
-        Label h = new Label(heading);
-        h.setStyle("-fx-text-fill: " + Theme.TEXT_PRIMARY + "; -fx-font-size: 15px; -fx-font-weight: bold;");
-        card.getChildren().add(h);
-        return card;
-    }
-
     private VBox scrollableSectionCard(String heading) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(24));

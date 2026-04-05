@@ -1,8 +1,3 @@
-/**
- * Registration screen for creating new regular user accounts.
- * Routes back to user login after successful registration.
- * Features back button to role selection.
- */
 package ui;
 
 import exception.AuthException;
@@ -18,36 +13,11 @@ public class UserRegisterScreen {
 
     private final AuthService authService = new AuthService();
 
-    /**
-     * Creates and returns the user registration scene.
-     * 
-     * @return Configured Scene object
-     */
     public Scene getScene() {
+        // Left branding panel
+        VBox left = Theme.brandingPanel("User Registration\n\nCreate your account and start\ntracking your music taste.");
 
-        // left branding panel
-        VBox left = new VBox();
-        left.setStyle("-fx-background-color: " + Theme.BG_CARD + ";");
-        left.setMinWidth(420);
-        left.setAlignment(Pos.CENTER);
-        left.setPadding(new Insets(60));
-
-        Label logo = new Label("MUSIFY");
-        logo.setStyle(
-                "-fx-text-fill: " + Theme.ACCENT + ";" +
-                        "-fx-font-size: 42px;" +
-                        "-fx-font-weight: bold;");
-
-        Label tagline = new Label("User Registration\n\nCreate your account and start\ntracking your music taste.");
-        tagline.setStyle(
-                "-fx-text-fill: " + Theme.TEXT_MUTED + ";" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-text-alignment: center;");
-        tagline.setWrapText(true);
-
-        left.getChildren().addAll(logo, tagline);
-
-        // right form panel
+        // Right form panel
         VBox right = new VBox(16);
         right.setAlignment(Pos.CENTER);
         right.setPadding(new Insets(60, 80, 60, 80));
@@ -55,63 +25,21 @@ public class UserRegisterScreen {
 
         Label title = new Label("Create user account");
         title.setStyle(Theme.LABEL_TITLE);
-
         Label subtitle = new Label("Join Musify and discover your listening habits");
         subtitle.setStyle(Theme.LABEL_SUBTITLE);
 
-        VBox form = new VBox(12);
-        form.setMaxWidth(360);
-
-        Label nameLabel = new Label("USERNAME");
-        nameLabel.setStyle(Theme.LABEL_SECTION);
         TextField nameField = new TextField();
-        nameField.setPromptText("Choose a username");
-        nameField.setStyle(Theme.FIELD);
-        nameField.setMaxWidth(Double.MAX_VALUE);
-        Theme.focusField(nameField);
-
-        Label emailLabel = new Label("EMAIL");
-        emailLabel.setStyle(Theme.LABEL_SECTION);
         TextField emailField = new TextField();
-        emailField.setPromptText("you@example.com");
-        emailField.setStyle(Theme.FIELD);
-        emailField.setMaxWidth(Double.MAX_VALUE);
-        Theme.focusField(emailField);
-
-        Label passLabel = new Label("PASSWORD");
-        passLabel.setStyle(Theme.LABEL_SECTION);
         PasswordField passField = new PasswordField();
-        passField.setPromptText("Choose a password (min 8 characters)");
-        passField.setStyle(Theme.FIELD);
-        passField.setMaxWidth(Double.MAX_VALUE);
-        Theme.focusField(passField);
-
         Label errorLabel = new Label("");
         errorLabel.setStyle(Theme.LABEL_ERROR);
         errorLabel.setWrapText(true);
 
-        Button registerBtn = new Button("Create Account");
-        registerBtn.setStyle(Theme.BTN_PRIMARY);
-        registerBtn.setMaxWidth(Double.MAX_VALUE);
-        registerBtn.setMinHeight(42);
-        Theme.hoverPrimary(registerBtn);
-
-        Label loginLink = new Label("Already have an account? Sign in");
-        loginLink.setStyle(Theme.LABEL_ACCENT);
-        loginLink.setOnMouseClicked(e ->
-                AppContext.primaryStage.setScene(new UserLoginScreen().getScene()));
-
-        Label backLink = new Label("← Back to role selection");
-        backLink.setStyle(Theme.LABEL_SUBTITLE + "-fx-cursor: hand;");
-        backLink.setOnMouseClicked(e ->
-                AppContext.primaryStage.setScene(new RoleSelectionScreen().getScene()));
-
+        Button registerBtn = Theme.primaryButton("Create Account");
         registerBtn.setOnAction(e -> {
-            String username = nameField.getText().trim();
-            String email    = emailField.getText().trim();
-            String pass     = passField.getText();
             try {
-                User user = authService.register(username, email, pass);
+                User user = authService.register(nameField.getText().trim(), 
+                    emailField.getText().trim(), passField.getText());
                 AppContext.primaryStage.setScene(new HomeScreen(user).getScene());
             } catch (AuthException ex) {
                 errorLabel.setText(ex.getMessage());
@@ -120,22 +48,23 @@ public class UserRegisterScreen {
             }
         });
 
-        form.getChildren().addAll(
-                nameLabel, nameField,
-                emailLabel, emailField,
-                passLabel, passField,
-                errorLabel,
-                registerBtn,
-                loginLink,
-                backLink
+        VBox form = new VBox(12,
+            Theme.formField("USERNAME", nameField, "Choose a username"),
+            Theme.formField("EMAIL", emailField, "you@example.com"),
+            Theme.formField("PASSWORD", passField, "Choose a password (min 8 characters)"),
+            errorLabel, registerBtn,
+            Theme.linkLabel("Already have an account? Log in", 
+                () -> AppContext.primaryStage.setScene(new UserLoginScreen().getScene())),
+            Theme.backLink("Back to role selection", 
+                () -> AppContext.primaryStage.setScene(new RoleSelectionScreen().getScene()))
         );
+        form.setMaxWidth(360);
 
         right.getChildren().addAll(title, subtitle, form);
         HBox.setHgrow(right, Priority.ALWAYS);
 
         HBox root = new HBox(left, right);
         root.setStyle("-fx-background-color: " + Theme.BG_DARK + ";");
-
         return new Scene(root, 1100, 720);
     }
 }

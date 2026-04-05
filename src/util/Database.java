@@ -20,7 +20,6 @@ public class Database {
 
     /**
      * Gets a connection to the Musify database.
-     * Connection parameters can be overridden via environment variables:
      * MUSIFY_DB_URL, MUSIFY_DB_USER, MUSIFY_DB_PASSWORD
      * 
      * @return Active database connection

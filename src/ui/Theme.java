@@ -5,8 +5,15 @@
  */
 package ui;
 
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
+import javafx.scene.control.TextInputControl;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.TextAlignment;
 
 import java.awt.Desktop;
 import java.net.URI;
@@ -211,27 +218,24 @@ public class Theme {
 
     /**
      * Adds hover effect to primary buttons.
-     * Changes background color on mouse enter/exit.
      */
-    public static void hoverPrimary(javafx.scene.control.Button btn) {
+    public static void hoverPrimary(Button btn) {
         btn.setOnMouseEntered(e -> btn.setStyle(BTN_PRIMARY_HOVER));
         btn.setOnMouseExited(e  -> btn.setStyle(BTN_PRIMARY));
     }
 
     /**
      * Adds hover effect to ghost buttons.
-     * Changes background and border on mouse enter/exit.
      */
-    public static void hoverGhost(javafx.scene.control.Button btn) {
+    public static void hoverGhost(Button btn) {
         btn.setOnMouseEntered(e -> btn.setStyle(BTN_GHOST_HOVER));
         btn.setOnMouseExited(e  -> btn.setStyle(BTN_GHOST));
     }
 
     /**
      * Adds focus border effect to text input fields.
-     * Adds white border when focused, removes when unfocused.
      */
-    public static void focusField(javafx.scene.control.TextInputControl field) {
+    public static void focusField(TextInputControl field) {
         field.focusedProperty().addListener((obs, old, focused) -> {
             field.setStyle(focused ? FIELD_FOCUS : FIELD);
         });
@@ -268,5 +272,80 @@ public class Theme {
                 setText(null);
             }
         };
+    }
+
+    // ==================== UI FACTORY HELPERS ====================
+
+    /** Creates a styled branding panel (left side of login/register screens) */
+    public static VBox brandingPanel(String taglineText) {
+        VBox left = new VBox();
+        left.setStyle("-fx-background-color: " + BG_CARD + ";");
+        left.setMinWidth(420);
+        left.setAlignment(Pos.CENTER);
+        left.setPadding(new Insets(60));
+
+        Label logo = new Label("MUSIFY");
+        logo.setStyle("-fx-text-fill: " + ACCENT + "; -fx-font-size: 42px; -fx-font-weight: bold;");
+
+        Label tagline = new Label(taglineText);
+        tagline.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font-size: 14px; -fx-text-alignment: center;");
+        tagline.setTextAlignment(TextAlignment.CENTER);
+        tagline.setWrapText(true);
+
+        left.getChildren().addAll(logo, tagline);
+        return left;
+    }
+
+    /** Creates a decorative stat block for branding panels */
+    public static VBox statBlock(String title, String sub) {
+        VBox box = new VBox(4);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(14, 20, 14, 20));
+        box.setStyle(CARD_ELEVATED);
+        Label t = new Label(title);
+        t.setStyle("-fx-text-fill: " + ACCENT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        Label s = new Label(sub);
+        s.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font-size: 11px;");
+        box.getChildren().addAll(t, s);
+        return box;
+    }
+
+    /** Creates a styled form field with label */
+    public static VBox formField(String labelText, TextInputControl field, String placeholder) {
+        Label label = new Label(labelText);
+        label.setStyle(LABEL_SECTION);
+        field.setPromptText(placeholder);
+        field.setStyle(FIELD);
+        field.setMaxWidth(Double.MAX_VALUE);
+        focusField(field);
+        VBox container = new VBox(4);
+        container.getChildren().addAll(label, field);
+        return container;
+    }
+
+    /** Creates a styled primary button */
+    public static Button primaryButton(String text) {
+        Button btn = new Button(text);
+        btn.setStyle(BTN_PRIMARY);
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setMinHeight(42);
+        hoverPrimary(btn);
+        return btn;
+    }
+
+    /** Creates a clickable link label */
+    public static Label linkLabel(String text, Runnable onClick) {
+        Label link = new Label(text);
+        link.setStyle(LABEL_ACCENT);
+        link.setOnMouseClicked(e -> onClick.run());
+        return link;
+    }
+
+    /** Creates a back link label */
+    public static Label backLink(String text, Runnable onClick) {
+        Label link = new Label(text);
+        link.setStyle(LABEL_SUBTITLE + "-fx-cursor: hand;");
+        link.setOnMouseClicked(e -> onClick.run());
+        return link;
     }
 }

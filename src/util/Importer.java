@@ -1,12 +1,7 @@
 /**
- * CSV importer for Spotify Exportify format.
- * Automatically detects and handles both raw Exportify files and cleaned CSV files.
- * 
- * Supported formats:
- * 1. Raw Exportify (from exportify.net) - 24 columns with audio features
- * 2. Cleaned CSV - simplified format with pre-calculated mood
- * 
- * Audio features from raw format are used to calculate mood automatically.
+ * CSV importer for Spotify Exportify format (from exportify.net).
+ * Parses raw Exportify files with 24 columns including audio features.
+ * Audio features are used to calculate mood automatically.
  */
 package util;
 
@@ -20,9 +15,9 @@ import java.util.*;
 public class Importer {
 
     /**
-     * Imports songs from a CSV file. Auto-detects format.
+     * Imports songs from a raw Exportify CSV file.
      * 
-     * @param filePath Path to CSV file (Exportify or cleaned format)
+     * @param filePath Path to Exportify CSV file
      * @return List of Song objects parsed from the file
      */
     public static List<Song> importFromCSV(String filePath) {
@@ -36,12 +31,6 @@ public class Importer {
                 return songs;
             }
 
-            // detect format by checking the header
-            String header = headerLine.toLowerCase();
-            boolean isRaw = header.contains("duration (ms)") || header.contains("danceability");
-
-            System.out.println("Detected format: " + (isRaw ? "raw Exportify" : "cleaned CSV"));
-
             String line;
             int row = 0;
 
@@ -50,7 +39,7 @@ public class Importer {
                 if (line.isBlank()) continue;
 
                 try {
-                    Song song = isRaw ? parseRawRow(line) : parseCleanedRow(line);
+                    Song song = parseRawRow(line);
                     if (song != null) songs.add(song);
                 } catch (Exception e) {
                     System.out.println("Skipping row " + row + ": " + e.getMessage());
@@ -93,25 +82,6 @@ public class Importer {
         );
 
         return new Song(trackName, albumName, artists, totalArtists, length, genres, mood.name(), link);
-    }
-
-    /**
-     * Parses a row from cleaned CSV format (11 columns).
-     * Assumes mood is already calculated and included in the file.
-     */
-    private static Song parseCleanedRow(String line) {
-        String[] d = splitCSV(line);
-        if (d.length < 11) return null;
-
-        String trackName = d[0].trim();
-        if (trackName.isEmpty()) return null;
-
-        String artists = normalizeArtists(d[2]);
-        int totalArtists = d[3].isBlank() ? countUniqueArtists(artists) : parseInt(d[3]);
-        String genres = normalizeGenres(d[8]);
-
-        return new Song(trackName, d[1].trim(), artists,
-                totalArtists, d[5].trim(), genres, d[9].trim(), d[10].trim());
     }
 
     /**
@@ -210,10 +180,9 @@ public class Importer {
     }
 
     /**
-     * Imports recommendations from a CSV file (Exportify or app export format).
-     * Auto-detects format and converts rows to Recommendation objects.
+     * Imports recommendations from a raw Exportify CSV file.
      * 
-     * @param filePath Path to recommendations CSV file
+     * @param filePath Path to Exportify CSV file
      * @return List of Recommendation objects
      */
     public static List<Recommendation> parseRecommendations(String filePath) {
@@ -225,7 +194,6 @@ public class Importer {
             if (headerLine == null) return recs;
 
             String header = headerLine.toLowerCase();
-            boolean isRaw = header.contains("duration (ms)") || header.contains("danceability");
             boolean isAppRecCsv = header.contains("recid") && header.contains("trackname")
                     && header.contains("albumname") && header.contains("artists");
 
@@ -235,14 +203,7 @@ public class Importer {
                 row++;
                 if (line.isBlank()) continue;
                 try {
-                    Recommendation rec;
-                    if (isRaw) {
-                        rec = parseRawRec(line);
-                    } else if (isAppRecCsv) {
-                        rec = parseAppRec(line);
-                    } else {
-                        rec = parseCleanedRec(line);
-                    }
+                    Recommendation rec = isAppRecCsv ? parseAppRec(line) : parseRawRec(line);
                     if (rec != null) recs.add(rec);
                 } catch (Exception e) {
                     System.out.println("Skipping row " + row + ": " + e.getMessage());
@@ -283,20 +244,6 @@ public class Importer {
         );
 
         return new Recommendation(trackName, albumName, artists, length, genres, mood.name(), link);
-    }
-
-    /**
-     * Parses a cleaned CSV row into a Recommendation object.
-     */
-    private static Recommendation parseCleanedRec(String line) {
-        String[] d = splitCSV(line);
-        if (d.length < 11) return null;
-
-        String trackName = d[0].trim();
-        if (trackName.isEmpty()) return null;
-
-        return new Recommendation(trackName, d[1].trim(), normalizeArtists(d[2]),
-                d[5].trim(), normalizeGenres(d[8]), d[9].trim(), d[10].trim());
     }
 
     /**
