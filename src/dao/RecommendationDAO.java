@@ -169,21 +169,6 @@ public class RecommendationDAO {
         return results;
     }
 
-    /**
-     * Filters recommendations by mood.
-     * 
-     * @param mood Mood category to filter by
-     * @return Recommendations with the specified mood
-     */
-    public List<Recommendation> filterByMood(String mood) {
-        List<Recommendation> results = new ArrayList<>();
-        for (Recommendation rec : getAll()) {
-            if (rec.getMood().equalsIgnoreCase(mood)) {
-                results.add(rec);
-            }
-        }
-        return results;
-    }
 
     /**
      * Deletes a recommendation from the database.
